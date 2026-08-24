@@ -3,11 +3,11 @@ import { useApp } from "../context/AppContext";
 import { api } from "../api/client";
 import { 
   Category, Item, Account, AccountType, PaymentMethod, CreditCard as CreditCardType, Contact, Debt, Budget, Goal, Schedule,
-  User, SyncConfig, SyncLog, SyncTestResult, SyncResultResponse,
+  User, SyncLog,
   AttachmentStats, StorageDirectoryConfigResponse, SystemStatsResponse
 } from "../types";
 import { formatCurrency } from "../utils/format";
-import { SyncSetupGuideModal } from "../components/SyncSetupGuideModal";
+import { MobileAppGuideModal } from "../components/MobileAppGuideModal";
 import { CreditCardInvoicesModal } from "../components/CreditCardInvoicesModal";
 import { ContactStatementModal } from "../components/ContactStatementModal";
 import { 
@@ -21,7 +21,7 @@ import {
   Building2, Landmark, PiggyBank, Percent, ChevronLeft, ChevronRight,
   Info, Coins, Wallet, CircleDollarSign, ArrowUp, ArrowDown,
   HardDrive, Paperclip, BookOpen, QrCode, Banknote, FileText, ArrowRightLeft,
-  FileCheck, Shield, Sparkles, Play, Pause, Ban, Repeat, History, FileDown
+  FileCheck, Shield, Sparkles, Play, Pause, Ban, Repeat, History, FileDown, Server
 } from "lucide-react";
 
 export type SettingsTab = 
@@ -253,20 +253,13 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
   const [adjustError, setAdjustError] = useState<string | null>(null);
 
   // ==========================================
-  // 7. ESTADOS DE SINCRONIZAÇÃO GOOGLE SHEETS
+  // 7. ESTADOS DE SINCRONIZAÇÃO MOBILE & API
   // ==========================================
-  const [syncConfig, setSyncConfig] = useState<SyncConfig | null>(null);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
-  const [loadingSyncConfig, setLoadingSyncConfig] = useState(false);
   const [loadingSyncLogs, setLoadingSyncLogs] = useState(false);
-  const [spreadsheetId, setSpreadsheetId] = useState("");
-  const [credentialsJson, setCredentialsJson] = useState("");
-  const [showJsonInput, setShowJsonInput] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  const [testingSync, setTestingSync] = useState(false);
-  const [exportingSync, setExportingSync] = useState(false);
-  const [importingSync, setImportingSync] = useState(false);
-  const [syncingFull, setSyncingFull] = useState(false);
+  const [testingApi, setTestingApi] = useState(false);
+  const [clearingLogs, setClearingLogs] = useState(false);
   const [customDirInput, setCustomDirInput] = useState("");
   const [migrateFilesCheckbox, setMigrateFilesCheckbox] = useState(true);
   const [savingCustomDir, setSavingCustomDir] = useState(false);
@@ -274,9 +267,8 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
   const [attachmentStats, setAttachmentStats] = useState<AttachmentStats | null>(null);
   const [systemStats, setSystemStats] = useState<SystemStatsResponse | null>(null);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
-  const [savingSyncConfig, setSavingSyncConfig] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; message: string; details?: string } | null>(null);
-  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedApiUrl, setCopiedApiUrl] = useState<string | null>(null);
 
   // ==========================================
   // 8. ESTADOS DE USUÁRIOS
@@ -359,18 +351,9 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
         setUsers(res.data);
         setLoadingUsers(false);
       } else if (activeTab === "SYNC") {
-        setLoadingSyncConfig(true);
         setLoadingSyncLogs(true);
-        const [cfgRes, logRes] = await Promise.all([
-          api.get<SyncConfig>("/sync/config"),
-          api.get<SyncLog[]>("/sync/logs"),
-        ]);
-        setSyncConfig(cfgRes.data);
-        if (cfgRes.data.spreadsheet_id) {
-          setSpreadsheetId(cfgRes.data.spreadsheet_id);
-        }
+        const logRes = await api.get<SyncLog[]>("/sync/logs");
         setSyncLogs(logRes.data);
-        setLoadingSyncConfig(false);
         setLoadingSyncLogs(false);
       } else if (activeTab === "ANEXOS") {
         try {
@@ -1223,145 +1206,53 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
   };
 
   // ==========================================
-  // HANDLERS: SINCRONIZAÇÃO GOOGLE SHEETS
+  // HANDLERS: SINCRONIZAÇÃO MOBILE & API REST
   // ==========================================
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        JSON.parse(text); // Validação de sintaxe JSON
-        setCredentialsJson(text);
-        setSyncFeedback({
-          type: "success",
-          message: "Arquivo de credenciais JSON carregado com sucesso!",
-        });
-      } catch (err) {
-        setSyncFeedback({
-          type: "error",
-          message: "O arquivo selecionado não contém um JSON válido.",
-        });
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleSaveSyncConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingSyncConfig(true);
+  const handleTestApiConnection = async () => {
+    setTestingApi(true);
     setSyncFeedback(null);
     try {
-      const res = await api.post<SyncConfig>("/sync/config", {
-        spreadsheet_id: spreadsheetId.trim(),
-        credentials_json: credentialsJson.trim() || undefined,
-      });
-      setSyncConfig(res.data);
-      setCredentialsJson("");
-      setShowJsonInput(false);
+      await refreshSyncStatus();
+      const logsRes = await api.get<SyncLog[]>("/sync/logs");
+      setSyncLogs(logsRes.data);
       setSyncFeedback({
         type: "success",
-        message: "Configuração de sincronização salva com sucesso!",
+        message: "API REST operacional e respondendo perfeitamente! Banco SQLite WAL ativo.",
       });
-      loadData();
     } catch (err: any) {
       setSyncFeedback({
         type: "error",
-        message: err.response?.data?.detail || "Erro ao salvar configurações de sync.",
+        message: err.response?.data?.detail || "Falha ao conectar com a API REST.",
       });
     } finally {
-      setSavingSyncConfig(false);
+      setTestingApi(false);
     }
   };
 
-  const handleTestConnection = async () => {
-    setTestingSync(true);
-    setSyncFeedback(null);
+  const handleClearSyncLogs = async () => {
+    if (!window.confirm("Deseja realmente limpar o histórico de logs de sincronização?")) return;
+    setClearingLogs(true);
     try {
-      const res = await api.post<SyncTestResult>("/sync/test");
-      if (res.data.success) {
-        setSyncFeedback({
-          type: "success",
-          message: `Conexão estabelecida com sucesso! Planilha: "${res.data.spreadsheet_title || "OK"}"`,
-        });
-      } else {
-        setSyncFeedback({
-          type: "error",
-          message: res.data.message,
-        });
-      }
-    } catch (err: any) {
-      setSyncFeedback({
-        type: "error",
-        message: err.response?.data?.detail || "Erro ao testar conexão com o Google Sheets.",
-      });
-    } finally {
-      setTestingSync(false);
-    }
-  };
-
-  const handleExportToMirror = async () => {
-    setExportingSync(true);
-    setSyncFeedback(null);
-    try {
-      const res = await api.post<SyncResultResponse>("/sync/export");
+      await api.delete("/sync/logs");
+      setSyncLogs([]);
       setSyncFeedback({
         type: "success",
-        message: `Exportação concluída! ${res.data.exported_to_mirror || 0} registros enviados para as 8 abas espelho no Google Sheets.`,
+        message: "Histórico de logs de sincronização limpo com sucesso!",
       });
-      loadData();
-      await refreshSyncStatus(true);
     } catch (err: any) {
       setSyncFeedback({
         type: "error",
-        message: err.response?.data?.detail || "Erro ao exportar dados para a planilha.",
+        message: err.response?.data?.detail || "Erro ao limpar logs de sincronização.",
       });
     } finally {
-      setExportingSync(false);
+      setClearingLogs(false);
     }
   };
 
-  const handleImportFromMobile = async () => {
-    setImportingSync(true);
-    setSyncFeedback(null);
-    try {
-      const res = await api.post<SyncResultResponse>("/sync/import");
-      setSyncFeedback({
-        type: "success",
-        message: `Importação concluída! ${res.data.imported_from_queue || 0} lançamentos processados da aba Fila_Mobile.`,
-      });
-      loadData();
-      await refreshSyncStatus(true);
-    } catch (err: any) {
-      setSyncFeedback({
-        type: "error",
-        message: err.response?.data?.detail || "Erro ao importar dados da fila mobile.",
-      });
-    } finally {
-      setImportingSync(false);
-    }
-  };
-
-  const handleFullSync = async () => {
-    setSyncingFull(true);
-    setSyncFeedback(null);
-    try {
-      const res = await api.post<SyncResultResponse>("/sync/full");
-      setSyncFeedback({
-        type: "success",
-        message: `Sincronização completa realizada! ${res.data.imported_from_queue || 0} importados da fila e ${res.data.exported_to_mirror || 0} exportados para as 8 abas espelho.`,
-      });
-      loadData();
-      await refreshSyncStatus(true);
-    } catch (err: any) {
-      setSyncFeedback({
-        type: "error",
-        message: err.response?.data?.detail || "Erro ao sincronizar com Google Sheets.",
-      });
-    } finally {
-      setSyncingFull(false);
-    }
+  const handleCopyApiUrl = (url: string, label: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedApiUrl(label);
+    setTimeout(() => setCopiedApiUrl(null), 2500);
   };
 
   const handleSaveStorageDir = async (e: React.FormEvent) => {
@@ -1413,11 +1304,6 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
     }
   };
 
-  const handleCopyEmail = (email: string) => {
-    navigator.clipboard.writeText(email);
-    setCopiedEmail(true);
-    setTimeout(() => setCopiedEmail(false), 2500);
-  };
 
   // ==========================================
   // HELPERS DE FORMATAÇÃO E ESTILO
@@ -1529,7 +1415,7 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
       id: "integracao",
       title: "Dados & Arquivos",
       tabs: [
-        { id: "SYNC", label: "Sincronização Nuvem", shortDescription: "Espelho Google Sheets", icon: Cloud },
+        { id: "SYNC", label: "App Mobile & API", shortDescription: "Conexão REST & Offline-First", icon: Smartphone },
         { id: "ANEXOS", label: "Comprovantes & Backups", shortDescription: "Download de .ZIP, disco e arquivos", icon: HardDrive },
       ],
     },
@@ -3778,26 +3664,26 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
       )}
 
       {/* ========================================== */}
-      {/* ABA 7: SINCRONIZAÇÃO NUVEM (GOOGLE SHEETS) */}
+      {/* ABA 7: APP MOBILE & SINCRONIZAÇÃO API      */}
       {/* ========================================== */}
       {activeTab === "SYNC" && (
         <div className="space-y-6 animate-fade-in">
           
-          {/* Banner Interativo com Todas as Informações e Passo a Passo */}
+          {/* Banner Interativo com Guia do Aplicativo Android */}
           <div className="bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-zinc-900 border border-emerald-500/30 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start sm:items-center gap-3.5 min-w-0">
               <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
-                <BookOpen className="w-5 h-5" />
+                <Smartphone className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                  <span>Como Configurar a Sincronização Nuvem?</span>
+                  <span>Aplicativo Android: 100% Offline-First</span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Tutorial Completo
+                    API REST Direta
                   </span>
                 </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Veja tudo o que é necessário: criar a Service Account, ativar APIs do Sheets e Drive, compartilhar a planilha e testar a conexão.
+                  Lançamentos com latência zero gravados no Room local e sincronizados diretamente com a API do Wallet quando houver conexão.
                 </p>
               </div>
             </div>
@@ -3807,341 +3693,280 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
               onClick={() => setShowGuide(true)}
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
             >
-              <HelpCircle className="w-4 h-4" />
-              <span>Ver Informações Necessárias</span>
+              <BookOpen className="w-4 h-4" />
+              <span>Ver Guia de Conexão Mobile</span>
             </button>
           </div>
 
           {/* Feedback Alertas */}
-          {syncFeedback && (() => {
-            const urlMatch = (syncFeedback.message + " " + (syncFeedback.details || "")).match(/https:\/\/[^\s]+/);
-            const actionUrl = urlMatch ? urlMatch[0] : null;
-
-            return (
-              <div className={`p-4 rounded-2xl border flex items-start gap-3 animate-fade-in ${
-                syncFeedback.type === "success"
-                  ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-200"
-                  : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200"
-              }`}>
-                {syncFeedback.type === "success" ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+          {syncFeedback && (
+            <div className={`p-4 rounded-2xl border flex items-start gap-3 animate-fade-in ${
+              syncFeedback.type === "success"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-200"
+                : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200"
+            }`}>
+              {syncFeedback.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              )}
+              <div className="space-y-1 flex-1 min-w-0">
+                <p className="text-xs font-semibold break-words">{syncFeedback.message}</p>
+                {syncFeedback.details && (
+                  <p className="text-[11px] font-mono opacity-80 break-words">{syncFeedback.details}</p>
                 )}
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  <p className="text-xs font-semibold break-words">{syncFeedback.message}</p>
-                  {syncFeedback.details && (
-                    <p className="text-[11px] font-mono opacity-80 break-words">{syncFeedback.details}</p>
-                  )}
-                  {actionUrl && (
-                    <div className="pt-1">
-                      <a
-                        href={actionUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Ativar Google Drive API no Console Google Cloud</span>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Card das 8 Abas Integradas */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
-                  <Database className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                    Espelho Integral da Base de Dados (8 Abas)
-                  </h3>
-                  <p className="text-xs text-zinc-400">
-                    Sincronização bidirecional entre o SQLite e a Planilha Google
-                  </p>
-                </div>
               </div>
             </div>
+          )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {[
-                { name: "Transacoes", desc: "Lançamentos", icon: FileSpreadsheet },
-                { name: "Categorias", desc: "Categorias & Natureza", icon: FolderTree },
-                { name: "Itens", desc: "Catálogo de Itens", icon: Package },
-                { name: "Contas", desc: "Contas & Carteiras", icon: Landmark },
-                { name: "Contatos", desc: "Favorecidos", icon: Users },
-                { name: "Dividas", desc: "Passivos", icon: Scale },
-                { name: "Orcamentos", desc: "Metas Mensais", icon: PiggyBank },
-                { name: "Fila_Mobile", desc: "Buffer Mobile", icon: Smartphone },
-              ].map((sheet) => {
-                const Icon = sheet.icon;
-                return (
-                  <div
-                    key={sheet.name}
-                    className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-800/40 flex items-center gap-2.5"
-                  >
-                    <Icon className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">{sheet.name}</p>
-                      <p className="text-[10px] text-zinc-400 truncate">{sheet.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Configuração de Conexão e Ações de Sincronização */}
+          {/* Grid Principal: Conexão API & Endpoints */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Formulário de Configuração */}
+            
+            {/* Card 1: Endereços da API REST para o Android */}
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                  <Key className="w-4 h-4 text-emerald-500" />
-                  <span>Credenciais do Google Sheets & Drive</span>
-                </h3>
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
+                    <Server className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      Endereço da API REST (FastAPI)
+                    </h3>
+                    <p className="text-xs text-zinc-400">
+                      Configure a Base URL no seu aplicativo Android
+                    </p>
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowGuide(true)}
-                  className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>Ver Passo a Passo</span>
-                </button>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Porta 8000</span>
+                </span>
               </div>
 
-              <form onSubmit={handleSaveSyncConfig} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                    ID da Planilha Google (Spreadsheet ID)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: 1BxiMVs0XRX5nZy1W4Xg8X..."
-                    value={spreadsheetId}
-                    onChange={(e) => setSpreadsheetId(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 font-mono text-zinc-900 dark:text-zinc-100"
-                  />
-                  <p className="text-[10px] text-zinc-400 mt-1">
-                    Encontre o ID na URL da sua planilha: docs.google.com/spreadsheets/d/<strong>[ID_AQUI]</strong>/edit
-                  </p>
-                </div>
-
-                {/* Upload de JSON */}
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Arquivo de Conta de Serviço (credentials.json)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 text-xs text-zinc-600 dark:text-zinc-300 transition-all">
-                      <Upload className="w-4 h-4 text-zinc-400" />
-                      <span>{credentialsJson ? "Arquivo Selecionado ✓" : "Carregar Arquivo .json"}</span>
-                      <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowJsonInput(!showJsonInput)}
-                      className="px-3 py-2.5 text-xs font-medium border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    >
-                      {showJsonInput ? "Ocultar Texto" : "Colar JSON"}
-                    </button>
+              {/* Endereços Copiáveis */}
+              <div className="space-y-2.5">
+                {/* Emulador Android */}
+                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                      Emulador Android Studio (Host Loopback)
+                    </span>
+                    <code className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold truncate block">
+                      http://10.0.2.2:8000/
+                    </code>
                   </div>
-                </div>
-
-                {showJsonInput && (
-                  <div>
-                    <textarea
-                      rows={5}
-                      placeholder="Cole aqui o conteúdo do credentials.json..."
-                      value={credentialsJson}
-                      onChange={(e) => setCredentialsJson(e.target.value)}
-                      className="w-full p-3 text-[11px] font-mono bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-zinc-900 dark:text-zinc-100 resize-none"
-                    />
-                  </div>
-                )}
-
-                {/* Email do Service Account */}
-                {syncConfig?.service_account_email && (
-                  <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 text-xs space-y-1">
-                    <p className="font-semibold text-emerald-900 dark:text-emerald-200">
-                      Compartilhe sua planilha com o e-mail:
-                    </p>
-                    <div className="flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                      <code className="text-[11px] text-emerald-800 dark:text-emerald-300 truncate">
-                        {syncConfig.service_account_email}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyEmail(syncConfig.service_account_email!)}
-                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-emerald-700 dark:text-emerald-300 shrink-0"
-                        title="Copiar e-mail"
-                      >
-                        {copiedEmail ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={savingSyncConfig}
-                    className="flex-1 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
-                  >
-                    {savingSyncConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    <span>Salvar Configuração</span>
-                  </button>
-
                   <button
                     type="button"
-                    onClick={handleTestConnection}
-                    disabled={testingSync || !syncConfig?.has_credentials || !spreadsheetId}
-                    className="px-4 py-2.5 text-xs font-bold border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700/60 disabled:opacity-50 text-zinc-700 dark:text-zinc-200 rounded-xl shadow-sm transition-all flex items-center gap-2"
+                    onClick={() => handleCopyApiUrl("http://10.0.2.2:8000/", "emu")}
+                    className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-800 transition-all text-zinc-600 dark:text-zinc-300 shrink-0 cursor-pointer"
+                    title="Copiar URL"
                   >
-                    {testingSync ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <RefreshCw className="w-4 h-4" />}
-                    <span>Testar Conexão</span>
+                    {copiedApiUrl === "emu" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-              </form>
+
+                {/* Aparelho Físico Wi-Fi */}
+                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                      Aparelho Físico (Mesmo Wi-Fi / IP Local)
+                    </span>
+                    <code className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 font-bold truncate block">
+                      http://192.168.x.x:8000/
+                    </code>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyApiUrl("http://192.168.1.100:8000/", "wifi")}
+                    className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-800 transition-all text-zinc-600 dark:text-zinc-300 shrink-0 cursor-pointer"
+                    title="Copiar Modelo"
+                  >
+                    {copiedApiUrl === "wifi" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Botão Testar Conexão */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleTestApiConnection}
+                  disabled={testingApi}
+                  className="w-full py-2.5 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingApi ? "animate-spin" : ""}`} />
+                  <span>{testingApi ? "Verificando API..." : "Testar Conectividade da API REST"}</span>
+                </button>
+              </div>
             </div>
 
-            {/* Ações Manuais e Auditoria */}
+            {/* Card 2: Contratos e Endpoints REST de Sincronização */}
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 text-emerald-500" />
-                  <span>Ações & Status de Sincronização</span>
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-teal-100 dark:bg-teal-950/80 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800/60 shadow-sm">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      Endpoints REST de Sincronização
+                    </h3>
+                    <p className="text-xs text-zinc-400">
+                      Utilizados pelo Retrofit + WorkManager no Android
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                {/* Push */}
+                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold font-mono text-[10px]">
+                        POST
+                      </span>
+                      <code className="font-mono text-zinc-900 dark:text-zinc-100 font-semibold text-[11px]">
+                        /api/v1/sync/mobile/push
+                      </code>
+                    </div>
+                    <span className="text-[10px] text-zinc-400">Mobile $\rightarrow$ Servidor</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Envia em lote todas as transações criadas offline. Upsert idempotente no SQLite.
+                  </p>
+                </div>
+
+                {/* Pull */}
+                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 font-bold font-mono text-[10px]">
+                        GET
+                      </span>
+                      <code className="font-mono text-zinc-900 dark:text-zinc-100 font-semibold text-[11px]">
+                        /api/v1/sync/mobile/pull
+                      </code>
+                    </div>
+                    <span className="text-[10px] text-zinc-400">Servidor $\rightarrow$ Mobile</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Baixa categorias, contas, formas de pagamento, itens e lançamentos delta.
+                  </p>
+                </div>
+
+                {/* Attachments */}
+                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold font-mono text-[10px]">
+                        POST
+                      </span>
+                      <code className="font-mono text-zinc-900 dark:text-zinc-100 font-semibold text-[11px]">
+                        /api/v1/attachments/upload
+                      </code>
+                    </div>
+                    <span className="text-[10px] text-zinc-400">Comprovantes</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Upload de fotos de cupons/recibos capturados via CameraX para o disco local.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Histórico & Logs de Sincronização Mobile */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-emerald-500" />
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  Auditoria de Eventos de Sincronização Mobile
                 </h3>
-
-                <button
-                  type="button"
-                  onClick={() => refreshSyncStatus(true)}
-                  className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Atualizar Status</span>
-                </button>
               </div>
 
-              {/* Status de Pendências (Cards de Envio e Recebimento) */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className={`p-3 rounded-xl border transition-all ${
-                  (syncStatus?.pending_send || 0) > 0
-                    ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100"
-                    : "bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/70 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
-                }`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                      <ArrowUp className="w-3.5 h-3.5" />
-                      <span>Para Enviar</span>
-                    </span>
-                    <span className="text-xs font-black font-mono px-2 py-0.5 bg-white dark:bg-zinc-900 rounded-md border border-emerald-200 dark:border-emerald-800">
-                      {syncStatus?.pending_send || 0}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                    {(syncStatus?.pending_send || 0) === 0 ? "Sem alterações locais pendentes." : `${syncStatus?.pending_send} registros prontos no SQLite.`}
-                  </p>
-                </div>
-
-                <div className={`p-3 rounded-xl border transition-all ${
-                  (syncStatus?.pending_receive || 0) > 0
-                    ? "bg-indigo-50/80 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-100"
-                    : "bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/70 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
-                }`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                      <ArrowDown className="w-3.5 h-3.5" />
-                      <span>Para Receber</span>
-                    </span>
-                    <span className="text-xs font-black font-mono px-2 py-0.5 bg-white dark:bg-zinc-900 rounded-md border border-indigo-200 dark:border-indigo-800">
-                      {syncStatus?.pending_receive || 0}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                    {(syncStatus?.pending_receive || 0) === 0 ? "Fila móvel vazia na planilha." : `${syncStatus?.pending_receive} lançamento(s) na Fila_Mobile.`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleFullSync}
-                  disabled={syncingFull || !syncConfig?.has_credentials}
-                  className="col-span-full py-3 text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 disabled:opacity-50 text-white rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+                  onClick={async () => {
+                    setLoadingSyncLogs(true);
+                    const res = await api.get<SyncLog[]>("/sync/logs");
+                    setSyncLogs(res.data);
+                    setLoadingSyncLogs(false);
+                  }}
+                  disabled={loadingSyncLogs}
+                  className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  <RefreshCw className={`w-4 h-4 ${syncingFull ? "animate-spin" : ""}`} />
-                  <span>Sincronização Completa (Bidirecional)</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingSyncLogs ? "animate-spin" : ""}`} />
+                  <span>Atualizar</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleExportToMirror}
-                  disabled={exportingSync || !syncConfig?.has_credentials}
-                  className="p-3 text-xs font-bold border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 text-zinc-800 dark:text-zinc-200 rounded-xl transition-all flex items-center gap-2"
-                >
-                  <ArrowUpRight className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <div className="text-left">
-                    <p className="font-bold">Exportar para Planilha</p>
-                    <p className="text-[10px] font-normal text-zinc-400">SQLite &gt; 8 Abas Espelho</p>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleImportFromMobile}
-                  disabled={importingSync || !syncConfig?.has_credentials}
-                  className="p-3 text-xs font-bold border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 text-zinc-800 dark:text-zinc-200 rounded-xl transition-all flex items-center gap-2"
-                >
-                  <ArrowDownRight className="w-4 h-4 text-sky-500 shrink-0" />
-                  <div className="text-left">
-                    <p className="font-bold">Importar Fila Mobile</p>
-                    <p className="text-[10px] font-normal text-zinc-400">Fila_Mobile &gt; SQLite</p>
-                  </div>
-                </button>
-              </div>
-
-              {/* Logs de Auditoria */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-                <h4 className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                  Histórico de Sincronizações
-                </h4>
-                {syncLogs.length === 0 ? (
-                  <p className="text-[11px] text-zinc-400">Nenhum registro de sincronização ainda.</p>
-                ) : (
-                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-                    {syncLogs.slice(0, 10).map((log) => (
-                      <div
-                        key={log.id}
-                        className="p-2 rounded-lg border border-zinc-200/60 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 flex items-center justify-between text-[11px]"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${
-                            log.status === "SUCESSO" ? "bg-emerald-500" : "bg-rose-500"
-                          }`} />
-                          <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">
-                            {log.action}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-zinc-400 font-mono">
-                          {(log.items_imported || 0) + (log.items_exported || 0)} itens • {log.created_at.slice(11, 16)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                {syncLogs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearSyncLogs}
+                    disabled={clearingLogs}
+                    className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Limpar Logs</span>
+                  </button>
                 )}
               </div>
             </div>
+
+            {loadingSyncLogs ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-zinc-400">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                <span className="text-xs">Carregando histórico de sincronização...</span>
+              </div>
+            ) : syncLogs.length === 0 ? (
+              <div className="py-8 text-center text-zinc-400 text-xs">
+                Nenhum evento de sincronização mobile registrado ainda.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1 text-xs">
+                {syncLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1 sm:mt-0 ${
+                        log.status === "SUCESSO" ? "bg-emerald-500" : log.status === "PARCIAL" ? "bg-amber-500" : "bg-rose-500"
+                      }`} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono text-xs">
+                            {log.action}
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
+                            log.status === "SUCESSO" 
+                              ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300" 
+                              : "bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300"
+                          }`}>
+                            {log.status}
+                          </span>
+                        </div>
+                        <p className="text-zinc-600 dark:text-zinc-300 text-[11px] mt-0.5 truncate">
+                          {log.message}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 font-mono text-[10px] text-zinc-400">
+                      <span>{log.created_at ? new Date(log.created_at).toLocaleString("pt-BR") : ""}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
         </div>
       )}
 
@@ -5905,11 +5730,10 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
         </main>
       </div>
 
-      {/* Modal Interativo com Guia Passo a Passo Completo */}
-      <SyncSetupGuideModal
+      {/* Modal Interativo com Guia Passo a Passo do App Mobile */}
+      <MobileAppGuideModal
         isOpen={showGuide}
         onClose={() => setShowGuide(false)}
-        serviceAccountEmail={syncConfig?.service_account_email}
       />
     </div>
   );

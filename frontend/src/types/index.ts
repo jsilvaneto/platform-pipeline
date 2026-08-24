@@ -376,11 +376,13 @@ export interface DashboardSummary {
   goals_summary: GoalSummaryItem[];
 }
 
-export interface SyncConfig {
-  spreadsheet_id?: string | null;
-  spreadsheet_url?: string | null;
-  has_credentials: boolean;
-  service_account_email?: string | null;
+export interface SyncStatus {
+  api_online: boolean;
+  server_time: string;
+  database: string;
+  total_transactions: number;
+  total_attachments: number;
+  storage_healthy: boolean;
   last_sync_at?: string | null;
   last_sync_status?: string | null;
   last_action?: string | null;
@@ -388,8 +390,8 @@ export interface SyncConfig {
 
 export interface SyncLog {
   id: string;
-  action: "EXPORT" | "IMPORT" | "FULL" | "TEST";
-  status: "SUCESSO" | "ERRO" | "EM_ANDAMENTO";
+  action: "MOBILE_PUSH" | "MOBILE_PULL" | "EXPORT" | "IMPORT" | "FULL" | "TEST" | string;
+  status: "SUCESSO" | "ERRO" | "PARCIAL" | "EM_ANDAMENTO" | string;
   items_imported: number;
   items_exported: number;
   message: string;
@@ -397,58 +399,61 @@ export interface SyncLog {
   created_at: string;
 }
 
-export interface SyncTestResult {
+export interface MobileTransactionSyncItem {
+  id?: string;
+  type: "RECEITA" | "DESPESA" | "TRANSFERENCIA";
+  description: string;
+  amount_cents: number;
+  due_date: string;
+  payment_date?: string | null;
+  status: "PENDENTE" | "CONCLUIDO" | "CANCELADO";
+  category_id?: string | null;
+  account_id?: string | null;
+  destination_account_id?: string | null;
+  credit_card_id?: string | null;
+  payment_method_id?: string | null;
+  contact_id?: string | null;
+  item_id?: string | null;
+  debt_id?: string | null;
+  schedule_id?: string | null;
+  notes?: string | null;
+  installment_number?: number | null;
+  total_installments?: number | null;
+  invoice_month?: number | null;
+  invoice_year?: number | null;
+  is_invoice_payment?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MobileSyncPushRequest {
+  profile: ProfileType;
+  transactions: MobileTransactionSyncItem[];
+}
+
+export interface MobileSyncPushResponse {
   success: boolean;
-  message: string;
-  spreadsheet_title?: string | null;
-  sheets_found?: string[];
-  service_account_email?: string | null;
+  server_timestamp: string;
+  inserted_count: number;
+  updated_count: number;
+  synced_ids: string[];
+  errors: string[];
 }
 
-export interface SyncResultResponse {
-  success: boolean;
-  message: string;
-  imported_from_queue: number;
-  exported_to_mirror: number;
-  entity_counts?: {
-    transacoes?: number;
-    categorias?: number;
-    itens?: number;
-    contas?: number;
-    contatos?: number;
-    dividas?: number;
-    orcamentos?: number;
-    [key: string]: number | undefined;
-  };
-  errors?: string[];
-}
-
-export interface SyncPendingDetails {
-  pending_transactions: number;
-  pending_categories: number;
-  pending_items: number;
-  pending_accounts: number;
-  pending_contacts: number;
-  pending_debts: number;
-  pending_budgets: number;
-  pending_attachments: number;
-  queue_rows: number;
-}
-
-export interface SyncStatus {
-  is_configured: boolean;
-  has_credentials: boolean;
-  spreadsheet_id?: string | null;
-  spreadsheet_url?: string | null;
-  service_account_email?: string | null;
-  pending_send: number;
-  pending_receive: number;
-  total_pending: number;
-  has_pending: boolean;
-  last_sync_at?: string | null;
-  last_sync_status?: string | null;
-  last_action?: string | null;
-  details?: SyncPendingDetails | null;
+export interface MobileSyncPullResponse {
+  server_timestamp: string;
+  profile?: ProfileType | null;
+  categories: Category[];
+  accounts: Account[];
+  payment_methods: PaymentMethod[];
+  credit_cards: CreditCard[];
+  items: Item[];
+  contacts: Contact[];
+  debts: Debt[];
+  budgets: Budget[];
+  goals: Goal[];
+  schedules: Schedule[];
+  transactions: Transaction[];
 }
 
 export type AttachmentType = 

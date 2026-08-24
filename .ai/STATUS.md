@@ -65,30 +65,19 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
     - [x] **Desmarcação em 1 Clique (Toggle / Reabrir)**: Botão de status interativo na tabela permitindo desmarcar qualquer recebimento ou pagamento e retornar para `PENDENTE` instantaneamente, com restauração automática de saldo devedor em dívidas vinculadas.
     - [x] **Endpoints Backend**: `PATCH /api/v1/transactions/{id}/uncomplete` e `PATCH /api/v1/transactions/{id}/toggle-status` com suporte a recarga atômica de relacionamentos e concorrência assíncrona.
 
-- [x] **Sincronização Nuvem com Google Sheets (Espelho Integral & Base do App Mobile)**:
-  - [x] **Detecção e Indicador Inteligente de Alterações Pendentes**:
-    - [x] Endpoint `GET /api/v1/sync/status` calculando pendências de envio (`pending_send`), recebimento da fila (`pending_receive`) e total.
-    - [x] Botão dinâmico no cabeçalho com badges visuais (`↑ Envio`, `↓ Recebimento`), indicador pulsante de atenção e estado de sincronização.
-    - [x] Menu / Popover interativo com detalhamento de dados locais vs. fila móvel, horário da última sincronização e atalhos rápidos (*Sincronizar Tudo*, *Apenas Enviar*, *Apenas Receber*).
-    - [x] Atualização automática após criação, liquidação, edição e exclusão de transações.
-    - [x] **Desacoplamento de Pendências de Planilha vs. Google Drive**: Ajuste para que falhas de quota ou pendências de comprovantes no Drive não bloqueiem o status da Planilha Google, mantendo o botão em estado `Atualizado (0 pendências)` quando o espelho de 8 abas estiver 100% sincronizado.
-    - [x] **Limpeza Resiliente da Fila Mobile**: Garantia de limpeza das linhas processadas/duplicadas em `Fila_Mobile` para evitar itens presos indefinidamente.
-  - [x] Gerenciamento web das configurações na aba **Configurações > Sincronização Nuvem**.
-  - [x] Upload/edição de `credentials.json` (Service Account) e ID da planilha salvos no banco local.
-  - [x] Espelhamento automático de **8 abas integradas**:
-    - `Transacoes` (Lançamentos consolidados de receitas e despesas com metadados)
-    - `Categorias` (Árvore hierárquica, tipo e natureza de essencialidade)
-    - `Itens` (Catálogo de itens vinculados a subcategorias e valores padrão sugeridos)
-    - `Contas` (Contas bancárias, carteiras e aplicações)
-    - `Contatos` (Clientes, fornecedores, colaboradores e favorecidos)
-    - `Dividas` (Passivos, credores, valor total/restante e status)
-    - `Orcamentos` (Metas e limites de gastos mensais por categoria)
-    - `Fila_Mobile` (Buffer para ingestão e reconciliação de lançamentos do app mobile)
-  - [x] Ações direcionais em lote (*batchUpdate*) com auditoria detalhada por entidade em `sync_logs`.
-  - [x] **Guia Interativo Passo a Passo de Configuração & Tutorial**:
-    - [x] Modal interativo [SyncSetupGuideModal.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/components/SyncSetupGuideModal.tsx) com 4 passos visuais (Criação de Service Account, Ativação das APIs Sheets & Drive, Criação e Compartilhamento da Planilha Google, e Conexão no Wallet).
-    - [x] Botões com links diretos para ativação da Google Sheets API, Google Drive API e Google Cloud Console.
-    - [x] Cópia em 1 clique do e-mail da Service Account e banner informativo na aba **Configurações > Sincronização Nuvem**.
+- [x] **Sincronização Direta Mobile & Arquitetura Offline-First (FastAPI + Room Database)**:
+  - [x] **Endpoints REST Dedicados para o Aplicativo Android**:
+    - [x] Endpoint `GET /api/v1/sync/status` com métricas em tempo real de status da API, banco SQLite WAL e saúde do storage de comprovantes.
+    - [x] Endpoint `GET /api/v1/sync/mobile/pull` exportando dados mestres consolidados (categorias, contas, cartões, formas de pagamento, itens, contatos, dívidas, orçamentos, metas) e transações delta (`since=[ISO_TIMESTAMP]`).
+    - [x] Endpoint `POST /api/v1/sync/mobile/push` para ingestão em lote idempotente de lançamentos criados ou alterados offline no Room Database, preservando os UUIDs gerados no cliente.
+    - [x] Auditoria detalhada de sincronizações em `sync_logs` com limpeza em 1 clique (`DELETE /api/v1/sync/logs`).
+  - [x] **Desacoplamento Total de Terceiros**:
+    - [x] Remoção integral das dependências do Google Sheets e Google Drive API.
+    - [x] Dados 100% sob controle local do usuário com privacidade absoluta e comunicação direta.
+  - [x] **Interface Web & Central Mobile**:
+    - [x] Botão dinâmico e popover no cabeçalho [Header.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/components/Header.tsx) com status da API REST e métricas operacionais.
+    - [x] Nova aba executiva **Configurações > App Mobile & API** em [Settings.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/pages/Settings.tsx) com URLs base para emulador (`http://10.0.2.2:8000/`), rede local Wi-Fi e VPN/Tailscale, teste de conectividade e histórico de auditoria.
+    - [x] Modal interativo [MobileAppGuideModal.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/components/MobileAppGuideModal.tsx) com 4 passos visuais (Arquitetura Offline-First, Conexão REST, Sincronização WorkManager e Câmera/Biometria).
 
 - [x] **Gestão de Comprovantes & Armazenamento em Diretório Customizado (Local-First)**:
   - [x] **Armazenamento Local Primário Instantâneo com Diretório Customizável**:

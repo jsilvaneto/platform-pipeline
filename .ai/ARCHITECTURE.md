@@ -6,14 +6,12 @@
 graph TD
     ClientWeb["Frontend Web (React 19 + TypeScript + Vite + Tailwind)"] -->|REST / Bearer JWT| FastApi["Backend (FastAPI Assíncrono)"]
     ClientMobile["App Mobile Android (Kotlin + Jetpack Compose + Room)"] -->|REST / Bearer JWT| FastApi
-    ClientMobile -.->|Sync Offline Fallback| FilaMobile["Aba Fila_Mobile (Google Sheets)"]
+    
+    ClientMobile -->|Offline Local Persistence| RoomDB[("Room SQLite Local (No Aparelho)")]
+    ClientMobile -->|Background Direct Sync (WorkManager)| FastApi
     
     FastApi -->|SQLAlchemy 2.0 Async / aiosqlite| DB[("SQLite WAL (backend/data/wallet.db)")]
     FastApi -->|Local-First Storage| AttachmentsDir["Diretório de Anexos & Comprovantes (Disco / Rede)"]
-    FastApi -->|Google API Client / OAuth2| GoogleSheets["Google Sheets (Planilha Nuvem - 8 Abas)"]
-    
-    GoogleSheets -->|Leitura da Fila| FilaMobile
-    FastApi -->|Espelhamento Consolidado| AbaTransacoes["Aba Transacoes + 7 Abas Mestras"]
 ```
 
 ---
@@ -27,7 +25,6 @@ graph TD
 - **ORM & Persistência**: SQLAlchemy 2.0 Async + `aiosqlite`
 - **Validação de Dados**: Pydantic v2 + `pydantic-settings`
 - **Segurança & Criptografia**: `passlib[bcrypt]` nativo + `python-jose` (JWT HS256)
-- **Integração Google Sheets & Drive**: `google-api-python-client`, `google-auth-httplib2`, `google-auth-oauthlib`
 - **Manipulação de Arquivos & Backups**: `shutil`, `zipfile`, `aiofiles`, `tempfile`
 
 ### 2.2 Estrutura de Diretórios
@@ -35,13 +32,13 @@ graph TD
 backend/
 ├── app/
 │   ├── api/
-│   │   └── v1/            # 19 Roteadores REST completos (auth, transactions, cards, planning, etc.)
+│   │   └── v1/            # 19 Roteadores REST completos (auth, transactions, cards, sync, etc.)
 │   ├── core/
 │   │   ├── config.py      # Configurações via variáveis de ambiente (.env)
 │   │   └── security.py    # Utilitários de hash bcrypt e criação/validação de tokens JWT
 │   ├── models/            # Modelos declarativos SQLAlchemy (User, Transaction, CreditCard, Goal, etc.)
 │   ├── schemas/           # Schemas Pydantic v2 de entrada e serialização de saída
-│   ├── services/          # Regras de negócio (ScheduleService, GoogleSheetsService, ConciliationService, etc.)
+│   ├── services/          # Regras de negócio (ScheduleService, MobileSyncService, ConciliationService, etc.)
 │   ├── database.py        # Configuração de AsyncEngine SQLite WAL e sessão AsyncSession
 │   └── main.py            # Instância FastAPI, CORS, migrações dinâmicas e lifespan com seeding
 ├── data/
@@ -85,9 +82,9 @@ backend/
 | **Schedules / Recorrências**| `GET` / `POST` | `/api/v1/schedules` | Central de contratos, parcelamentos e assinaturas mensais. |
 | **Schedules / Recorrências**| `POST` | `/api/v1/schedules/{id}/adjust` | Reajuste de valor/vencimento em lançamentos futuros pendentes. |
 | **Schedules / Recorrências**| `POST` | `/api/v1/schedules/{id}/action` | Pausar, reativar ou cancelar contrato/assinatura. |
-| **Comprovantes & Anexos** | `POST` | `/api/v1/attachments/upload` | Upload com tipificação (Comprovante, NF, Fatura, Recibo, Contrato). |
-| **Comprovantes & Anexos** | `GET` | `/api/v1/attachments/view/{id}` | Visualização inline de imagens e PDFs com cache HTTP. |
-| **Comprovantes & Anexos** | `GET` | `/api/v1/attachments/download/{id}` | Download direto do comprovante com filename original. |
+| **Comprovantes & Anexos** | `POST` | `/api/v1/attachments/upload` | Upload direto com tipificação (Comprovante, NF, Fatura, Recibo, Contrato). |
+| **Comprovantes & Anexos** | `GET` | `/api/v1/attachments/{id}/file` | Visualização inline de imagens e PDFs com cache HTTP. |
+| **Comprovantes & Anexos** | `GET` | `/api/v1/attachments/{id}/download` | Download direto do comprovante com filename original. |
 | **Comprovantes & Anexos** | `GET` / `POST` | `/api/v1/attachments/storage-dir` | Consulta, alteração e migração automática de diretório físico. |
 | **Dashboard** | `GET` | `/api/v1/dashboard/summary` | KPIs consolidados, saldos por conta, 50-30-20 e timeline 7 dias. |
 | **Planejamento** | `GET` | `/api/v1/planning/projection` | Fluxo de caixa projetado de 12 a 24 meses com curva patrimonial. |
@@ -99,27 +96,22 @@ backend/
 | **Conciliação Bancária** | `POST` | `/api/v1/conciliation/import` | Importação e gravação transacional em lote de extratos bancários PJ. |
 | **Sistema & Backups** | `GET` | `/api/v1/system/stats` | Estatísticas de tamanho de banco, contagem de anexos e uso de disco. |
 | **Sistema & Backups** | `GET` | `/api/v1/system/backup` | Download de backup consolidado em 1 clique (.ZIP com DB + Anexos). |
-| **Sincronização Nuvem** | `GET` / `POST` | `/api/v1/sync/config` | Leitura e atualização de credenciais Google e ID da planilha. |
-| **Sincronização Nuvem** | `GET` | `/api/v1/sync/status` | Detecção em tempo real de pendências de envio e recebimento da fila. |
-| **Sincronização Nuvem** | `POST` | `/api/v1/sync/test` | Teste de conexão e permissões com as APIs Google Sheets e Drive. |
-| **Sincronização Nuvem** | `POST` | `/api/v1/sync/export` | Exportação atômica em lote para as abas espelho da planilha. |
-| **Sincronização Nuvem** | `POST` | `/api/v1/sync/import` | Ingestão e conciliação de lançamentos da aba `Fila_Mobile`. |
-| **Sincronização Nuvem** | `POST` | `/api/v1/sync/full` | Sincronização completa de ida e volta (import + export). |
-| **Sincronização Nuvem** | `GET` | `/api/v1/sync/logs` | Histórico e logs de auditoria de sincronização. |
+| **Sincronização Mobile** | `GET` | `/api/v1/sync/status` | Retorna status operacional da API, SQLite WAL e saúde do storage. |
+| **Sincronização Mobile** | `GET` | `/api/v1/sync/mobile/pull` | Download de dados mestres e transações delta para o app Android. |
+| **Sincronização Mobile** | `POST` | `/api/v1/sync/mobile/push` | Ingestão em lote de lançamentos criados offline no dispositivo móvel. |
+| **Sincronização Mobile** | `GET` | `/api/v1/sync/logs` | Histórico e logs de auditoria de sincronização móvel. |
+| **Sincronização Mobile** | `DELETE` | `/api/v1/sync/logs` | Limpeza de logs de auditoria de sincronização. |
 
 ---
 
-## 3. Integração com Google Sheets (Espelho Integral & Fila Mobile)
+## 3. Dinâmica de Sincronização Mobile Direta (Offline-First)
 
-### 3.1 Estrutura das 8 Abas da Planilha
-1. **`Transacoes`**: Espelho analítico de receitas, despesas e transferências com metadados e IDs.
-2. **`Categorias`**: Árvore com nomes, tipos e natureza de essencialidade.
-3. **`Itens`**: Catálogo de itens vinculados a categorias com valor sugerido.
-4. **`Contas`**: Contas bancárias, carteiras e aplicações cadastradas.
-5. **`Contatos`**: Cadastro consolidado de clientes, fornecedores e favorecidos.
-6. **`Dividas`**: Passivos, credores, valor total/restante e status.
-7. **`Orcamentos`**: Tetos mensais de gastos por categoria.
-8. **`Fila_Mobile`**: Fila de recepção para lançamentos inseridos remotamente pelo app mobile Android.
+### 3.1 Ciclo de Sincronização
+1. **Gravação Local**: O usuário registra despesas no app Android. A gravação ocorre em menos de 10ms no Room Database (`sync_status = "PENDENTE"`).
+2. **Detecção de Conexão**: O `WorkManager` observa o estado de conectividade (`NetworkType.CONNECTED`).
+3. **Push em Lote**: O worker envia as transações pendentes para `POST /api/v1/sync/mobile/push`. O servidor atualiza ou insere atomicamente no SQLite WAL.
+4. **Pull de Atualizações**: O app busca cadastros e lançamentos modificados no servidor via `GET /api/v1/sync/mobile/pull?since={timestamp}`.
+5. **Upload de Fotos**: As fotos de comprovantes armazenadas no aparelho são enviadas diretamente para `POST /api/v1/attachments/upload`.
 
 ---
 

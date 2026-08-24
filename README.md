@@ -1,13 +1,13 @@
 # 💼 Wallet - Sistema de Gestão Financeira
  
-O **Wallet** é uma plataforma moderna de controle financeiro pessoal e empresarial, desenvolvida para proporcionar total soberania de dados, alta performance e controle granular de receitas, despesas, parcelamentos, faturas de cartão de crédito, dívidas, orçamentos, planejamento financeiro e sincronização em nuvem.
+O **Wallet** é uma plataforma moderna de controle financeiro pessoal e empresarial, desenvolvida para proporcionar total soberania de dados, alta performance e controle granular de receitas, despesas, parcelamentos, faturas de cartão de crédito, dívidas, orçamentos, planejamento financeiro e sincronização móvel direta.
 
 ---
 
 ## 🚀 Status do Projeto
 
-- **Fase 1 (Backend FastAPI, SQLite WAL, Sync Google Sheets & Frontend Web React 19)**: **100% CONCLUÍDA ✓**
-- **Fase 2 (Aplicativo Mobile Android Nativo em Kotlin / Jetpack Compose)**: *Pronto para Início* (Especificação Completa em [.ai/ANDROID_APP.md](.ai/ANDROID_APP.md))
+- **Fase 1 (Backend FastAPI, SQLite WAL, Armazenamento Local de Anexos & Frontend Web React 19)**: **100% CONCLUÍDA ✓**
+- **Fase 2 (Aplicativo Mobile Android Nativo em Kotlin / Jetpack Compose - Offline-First)**: *Pronto para Início* (Especificação Completa em [.ai/ANDROID_APP.md](.ai/ANDROID_APP.md))
 
 ---
 
@@ -17,6 +17,7 @@ O **Wallet** é uma plataforma moderna de controle financeiro pessoal e empresar
 - 📊 **Dashboard Executivo & Posição Patrimonial**: KPIs em tempo real de Realizado, A Vencer, Projeção Final do Mês, Saldos Consolidados por Conta, Termômetro da Regra 50-30-20, Gráfico Histórico de 6 meses e Timeline dos Próximos 7 Dias com liquidação rápida em 1 clique.
 - 💳 **Gestão de Cartões de Crédito & Faturas**: Controle de limites, faturas mensais (Aberta, Fechada, Paga), indicação de melhor dia de compra, parcelamentos automáticos e liquidação consolidada em 1 clique.
 - 📎 **Comprovantes & Anexos Local-First**: Armazenamento físico estruturado com suporte a diretório customizado (disco local, HD externo ou rede), visualizador embutido com zoom/rotação/PDF, tipificação de documentos (Comprovante, NF, Fatura, Recibo, Contrato) e migração automática.
+- 📱 **Sincronização Direta Mobile (100% Offline-First)**: O app Android grava instantaneamente no banco Room SQLite do aparelho e sincroniza em lote diretamente com a API FastAPI via WorkManager assim que houver conectividade.
 - 📈 **Módulo de Planejamento & Futuro**:
   - **Fluxo de Caixa Projetado (12M a 24M)** com curva patrimonial e alertas de liquidez.
   - **Simulador What-If** interativo em tempo real.
@@ -29,7 +30,6 @@ O **Wallet** é uma plataforma moderna de controle financeiro pessoal e empresar
 - 👥 **Extrato de Conta-Corrente por Contato**: Timeline individual de movimentações, saldo líquido e débitos com clientes e fornecedores.
 - ⚡ **Ações em Lote & Relatórios**: Edição, baixa e exclusão em massa com exportação formal em **PDF / Impressão** e planilha **CSV**.
 - 💾 **Backup Consolidado em 1 Clique**: Empacotamento atômico do banco SQLite WAL (`wallet.db`) e diretório de anexos em arquivo `.ZIP`.
-- ☁️ **Sincronização com Google Sheets**: Espelho integral em 8 abas, fila de recepção mobile (`Fila_Mobile`) e indicador dinâmico de alterações pendentes.
 
 ---
 
@@ -41,7 +41,6 @@ O **Wallet** é uma plataforma moderna de controle financeiro pessoal e empresar
 - **SQLite** com modo WAL (`Write-Ahead Logging`) e integridade referencial
 - **JWT Auth** com hashing nativo `bcrypt`
 - **Pydantic v2**
-- **Google Sheets API v4 & Google Drive API** via Service Account OAuth2
 
 ### Frontend Web
 - **React 19** + **TypeScript**
@@ -51,7 +50,7 @@ O **Wallet** é uma plataforma moderna de controle financeiro pessoal e empresar
 
 ### Mobile Android (Fase 2)
 - **Kotlin 2.0+** + **Jetpack Compose** + **Material 3**
-- **Room SQLite** (Arquitetura Offline-First)
+- **Room SQLite** (Arquitetura 100% Offline-First)
 - **Retrofit 2** + **OkHttp 3** + **WorkManager**
 - **BiometricPrompt** + **CameraX**
 
@@ -99,4 +98,4 @@ Abra no seu navegador:
 - [.ai/STATUS.md](.ai/STATUS.md) - Histórico consolidado de releases, checklist detalhado e roadmap.
 - [.ai/openapi.json](.ai/openapi.json) - Especificação OpenAPI 3.1 da API REST (gerado automaticamente).
 - [.ai/schema.sql](.ai/schema.sql) - Estrutura e DDL do banco de dados SQLite WAL.
-- [.ai/DECISIONS/](.ai/DECISIONS/) - Registro de Decisões de Arquitetura (ADRs 001 a 014).
+- [.ai/DECISIONS/](.ai/DECISIONS/) - Registro de Decisões de Arquitetura (ADRs 001 a 015).

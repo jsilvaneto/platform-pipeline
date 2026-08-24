@@ -16,7 +16,7 @@ interface AppContextType {
   syncStatus: SyncStatus | null;
   refreshSyncStatus: (checkRemote?: boolean) => Promise<void>;
   isSyncing: boolean;
-  triggerSync: (action?: "full" | "export" | "import") => Promise<{ success: boolean; message: string }>;
+  triggerSync: () => Promise<{ success: boolean; message: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -44,36 +44,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  const refreshSyncStatus = useCallback(async (checkRemote: boolean = true) => {
+  const refreshSyncStatus = useCallback(async (_checkRemote?: boolean) => {
     if (!token) return;
     try {
-      const res = await api.get<SyncStatus>("/sync/status", {
-        params: { check_remote: checkRemote },
-      });
+      const res = await api.get<SyncStatus>("/sync/status");
       setSyncStatus(res.data);
     } catch (err) {
-      console.error("Erro ao obter status de sincronização:", err);
+      console.error("Erro ao obter status do servidor/sincronização:", err);
     }
   }, [token]);
 
-  const triggerSync = useCallback(async (action: "full" | "export" | "import" = "full") => {
+  const triggerSync = useCallback(async () => {
     setIsSyncing(true);
     try {
-      const endpoint = action === "export" ? "/sync/export" : action === "import" ? "/sync/import" : "/sync/full";
-      const res = await api.post(endpoint);
-      await refreshSyncStatus(true);
+      const res = await api.get<SyncStatus>("/sync/status");
+      setSyncStatus(res.data);
       return {
         success: true,
-        message: res.data.message || "Sincronização concluída com sucesso!",
+        message: "Status da API e banco de dados atualizado com sucesso!",
       };
     } catch (err: any) {
-      const msg = err.response?.data?.detail || "Erro ao executar sincronização.";
-      await refreshSyncStatus(false);
+      const msg = err.response?.data?.detail || "Erro ao consultar status da API.";
       return { success: false, message: msg };
     } finally {
       setIsSyncing(false);
     }
-  }, [refreshSyncStatus]);
+  }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -104,20 +100,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem("wallet_hide_values", hideValues ? "true" : "false");
   }, [hideValues]);
 
-  // Polling periódico do status de sincronização
+  // Polling periódico do status de sincronização e saúde da API
   useEffect(() => {
     if (!token) {
       setSyncStatus(null);
       return;
     }
 
-    refreshSyncStatus(true);
+    refreshSyncStatus();
     const interval = setInterval(() => {
-      refreshSyncStatus(true);
+      refreshSyncStatus();
     }, 30000);
 
     const onFocus = () => {
-      refreshSyncStatus(true);
+      refreshSyncStatus();
     };
     window.addEventListener("focus", onFocus);
 
@@ -172,6 +168,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) throw new Error("useApp deve ser utilizado dentro de AppProvider");
+  if (!context) {
+    throw new Error("useApp deve ser usado dentro de um AppProvider");
+  }
   return context;
 };

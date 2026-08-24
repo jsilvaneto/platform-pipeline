@@ -10,7 +10,7 @@ O aplicativo mobile foi concebido como uma extensão ágil e "local-first" do ec
 1. Registre despesas e receitas instantaneamente na rua com poucos toques (*Quick Entry*).
 2. Tire fotos de comprovantes fiscais/recibos na hora e anexe às transações.
 3. Consulte rapidamente seu saldo em contas, faturas de cartão de crédito e contas a vencer no dia.
-4. Funcione **100% Offline** (persistindo em banco de dados local Room/SQLite) e sincronize de forma transparente quando houver conexão via API REST ou Google Sheets.
+4. Funcione **100% Offline** (persistindo em banco de dados local Room/SQLite) e sincronize de forma transparente e direta quando houver conexão via API REST.
 5. Proteja o acesso por **Biometria** (impressão digital / reconhecimento facial).
 
 ---
@@ -38,10 +38,9 @@ graph TD
     UI["UI Layer (Jetpack Compose Screens & Components)"] -->|Observe State / Send Events| VM["ViewModel Layer (StateFlow / UI State)"]
     VM -->|Execute Use Cases| Domain["Domain Layer (UseCases / Business Rules)"]
     Domain -->|Call Interfaces| Repo["Repository Layer (TransactionRepository, SyncRepository)"]
-    Repo -->|Local Read/Write| Room["Local DataSource (Room SQLite DB)"]
-    Repo -->|Remote Sync / REST| Retrofit["Remote DataSource (FastAPI REST Client)"]
+    Repo -->|Local Read/Write (Instantâneo)| Room["Local DataSource (Room SQLite DB)"]
+    Repo -->|Remote Sync / REST (Background)| Retrofit["Remote DataSource (FastAPI REST Client)"]
     Retrofit -->|Bearer JWT| BackendFastAPI["Servidor Wallet (FastAPI :8000)"]
-    Repo -.->|Fallback Nuvem| GoogleSheets["Google Sheets (Aba Fila_Mobile)"]
 ```
 
 ---
@@ -178,51 +177,22 @@ interface WalletApiService {
     @GET("api/v1/auth/me")
     suspend fun getCurrentUser(): UserResponse
 
-    // 2. Dados Mestres (Sincronização de Cadastros)
-    @GET("api/v1/categories")
-    suspend fun getCategories(@Query("profile") profile: String): List<CategoryResponse>
+    // 2. Sincronização Direta Mobile (Push & Pull em Lote)
+    @POST("api/v1/sync/mobile/push")
+    suspend fun pushOfflineTransactions(
+        @Body request: MobileSyncPushRequest
+    ): MobileSyncPushResponse
 
-    @GET("api/v1/accounts")
-    suspend fun getAccounts(@Query("profile") profile: String): List<AccountResponse>
-
-    @GET("api/v1/payment-methods")
-    suspend fun getPaymentMethods(@Query("profile") profile: String): List<PaymentMethodResponse>
-
-    @GET("api/v1/credit-cards")
-    suspend fun getCreditCards(@Query("profile") profile: String): List<CreditCardResponse>
-
-    @GET("api/v1/items")
-    suspend fun getItems(@Query("profile") profile: String): List<ItemResponse>
-
-    @GET("api/v1/contacts")
-    suspend fun getContacts(@Query("profile") profile: String): List<ContactResponse>
-
-    // 3. Transações
-    @GET("api/v1/transactions")
-    suspend fun getTransactions(
+    @GET("api/v1/sync/mobile/pull")
+    suspend fun pullServerData(
         @Query("profile") profile: String,
-        @Query("month") month: Int? = null,
-        @Query("year") year: Int? = null,
-        @Query("status") status: String? = null,
-        @Query("limit") limit: Int = 100
-    ): List<TransactionResponse>
+        @Query("since") since: String? = null
+    ): MobileSyncPullResponse
 
-    @POST("api/v1/transactions")
-    suspend fun createTransaction(@Body request: TransactionCreateRequest): TransactionResponse
+    @GET("api/v1/sync/status")
+    suspend fun getSyncStatus(): SyncStatusResponse
 
-    @PUT("api/v1/transactions/{id}")
-    suspend fun updateTransaction(
-        @Path("id") id: String,
-        @Body request: TransactionUpdateRequest
-    ): TransactionResponse
-
-    @PATCH("api/v1/transactions/{id}/toggle-status")
-    suspend fun toggleTransactionStatus(@Path("id") id: String): TransactionResponse
-
-    @DELETE("api/v1/transactions/{id}")
-    suspend fun deleteTransaction(@Path("id") id: String): Response<Unit>
-
-    // 4. Upload de Comprovantes
+    // 3. Upload de Comprovantes
     @Multipart
     @POST("api/v1/attachments/upload")
     suspend fun uploadAttachment(
@@ -232,7 +202,7 @@ interface WalletApiService {
         @Query("transaction_id") transactionId: String? = null
     ): AttachmentResponse
 
-    // 5. Dashboard & KPIs
+    // 4. Dashboard & KPIs
     @GET("api/v1/dashboard/summary")
     suspend fun getDashboardSummary(
         @Query("profile") profile: String,
@@ -275,26 +245,27 @@ Esta é a tela mais importante do mobile:
 
 ## 7. Estratégia de Sincronização e Resiliência (Offline-First)
 
-### 7.1 Cenário 1: Conectado na Rede Local / Servidor Ativo (Online)
-1. O app envia a transação via `POST /api/v1/transactions`.
-2. Se houver comprovante capturado, envia via `POST /api/v1/attachments/upload`.
-3. Ao receber a resposta `201 Created`, atualiza o registro no Room com `syncStatus = "SINCRONIZADO"`.
+### 7.1 Cenário 1: Operação 100% Offline (Sem Conexão)
+1. Ao criar uma transação no app, o item é gravado imediatamente no Room Database local com `syncStatus = "PENDENTE"` e UUID local (< 10ms).
+2. Se o usuário tirou foto do comprovante com a câmera (CameraX), o arquivo é persistido no armazenamento interno do app (`context.filesDir/receipts/`) com `localAttachmentPath`.
+3. O item aparece na lista do app imediatamente com um indicador visual de "Pendente de envio".
 
-### 7.2 Cenário 2: Sem Internet / Fora da Rede Local (Offline)
-1. A transação é salva no Room com `syncStatus = "PENDENTE"`.
-2. A foto é persistida no armazenamento interno seguro do app (`context.filesDir/receipts/`).
-3. O app exibe o item na lista imediatamente com um ícone sutil de "Aguardando sincronização" (nuvem com relógio).
-4. Um job do **WorkManager** (`SyncWorker`) é agendado com a restrição `Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()`.
-5. Quando o aparelho reconectar à rede do servidor (ou VPN/Tailscale):
-   - O `SyncWorker` executa em background.
-   - Sobe todas as transações com `syncStatus == "PENDENTE"`.
-   - Faz o upload dos arquivos de imagem pendentes.
-   - Atualiza o banco local com os dados atualizados do servidor.
+### 7.2 Cenário 2: Reconexão e Sincronização em Segundo Plano (WorkManager)
+1. O **WorkManager** agenda uma tarefa periódica ou disparada por conectividade (`SyncWorker`):
+   ```kotlin
+   val constraints = Constraints.Builder()
+       .setRequiredNetworkType(NetworkType.CONNECTED)
+       .build()
+   ```
+2. Ao detectar conexão com o servidor FastAPI:
+   - **Etapa 1 (Push)**: O worker consulta no Room todas as transações com `syncStatus == "PENDENTE"` e envia em lote via `POST /api/v1/sync/mobile/push`.
+   - **Etapa 2 (Upload de Fotos)**: Para cada transação com foto local pendente, envia o arquivo binário via `POST /api/v1/attachments/upload` e atualiza `remoteAttachmentId`.
+   - **Etapa 3 (Pull Delta)**: Executa `GET /api/v1/sync/mobile/pull?since={last_sync_timestamp}` para baixar novos cadastros (categorias, contas, etc.) e transações criadas na interface Web.
+   - **Etapa 4 (Consolidação)**: Atualiza o status local no Room para `syncStatus = "SINCRONIZADO"`.
 
-### 7.3 Cenário 3: Fallback via Google Sheets (`Fila_Mobile`)
-Caso o servidor FastAPI local não possua IP público ou VPN ativa e o usuário esteja na rede celular:
-- O app pode gravar diretamente na aba `Fila_Mobile` da Planilha Google configurada (utilizando as credenciais OAuth da conta Google do usuário ou webhook Apps Script).
-- Quando o usuário abrir a aplicação web em casa ou o backend rodar a sincronização, o FastAPI importa e processa a `Fila_Mobile` automaticamente.
+### 7.3 Resolução de Conflitos e Idempotência
+- **Preservação de UUIDs**: Os UUIDs gerados no app mobile são preservados no SQLite do servidor, garantindo idempotência e evitando duplicações mesmo com múltiplas tentativas de retry do WorkManager.
+- **Política Last-Write-Wins**: Em caso de edição simultânea, a data `updated_at` determina o estado final dos dados.
 
 ---
 

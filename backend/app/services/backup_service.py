@@ -13,7 +13,7 @@ from app.schemas.system import SystemStatsResponse
 from app.services.attachment_service import (
     get_storage_directory, format_bytes, DEFAULT_ATTACHMENT_DIR
 )
-from app.services.google_sheets_service import get_config_value, set_config_value
+from app.services.system_service import get_config_value, set_config_value
 from app.database import DATA_DIR
 
 DB_PATH = os.path.join(DATA_DIR, "wallet.db")

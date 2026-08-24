@@ -1,62 +1,84 @@
+from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from app.schemas.category import CategoryResponse
+from app.schemas.account import AccountResponse
+from app.schemas.payment_method import PaymentMethodResponse
+from app.schemas.credit_card import CreditCardResponse
+from app.schemas.item import ItemResponse
+from app.schemas.contact import ContactResponse
+from app.schemas.debt import DebtResponse
+from app.schemas.budget import BudgetResponse
+from app.schemas.goal import GoalResponse
+from app.schemas.schedule import ScheduleResponse
+from app.schemas.transaction import TransactionResponse
 
-class SyncConfigResponse(BaseModel):
-    spreadsheet_id: Optional[str] = None
-    spreadsheet_url: Optional[str] = None
-    has_credentials: bool = False
-    service_account_email: Optional[str] = None
-    last_sync_at: Optional[str] = None
-    last_sync_status: Optional[str] = None
-    last_action: Optional[str] = None
+ProfileType = Literal["PESSOAL", "EMPRESA"]
+TransactionType = Literal["RECEITA", "DESPESA", "TRANSFERENCIA"]
+TransactionStatus = Literal["PENDENTE", "CONCLUIDO", "CANCELADO"]
 
-class SyncConfigUpdate(BaseModel):
-    spreadsheet_id: Optional[str] = None
-    credentials_json: Optional[str] = None
+class MobileTransactionSyncItem(BaseModel):
+    id: Optional[str] = Field(None, description="UUID da transação gerado no cliente ou no servidor")
+    type: TransactionType = "DESPESA"
+    description: str
+    amount_cents: int
+    due_date: str
+    payment_date: Optional[str] = None
+    status: TransactionStatus = "PENDENTE"
+    category_id: Optional[str] = None
+    account_id: Optional[str] = None
+    destination_account_id: Optional[str] = None
+    credit_card_id: Optional[str] = None
+    payment_method_id: Optional[str] = None
+    contact_id: Optional[str] = None
+    item_id: Optional[str] = None
+    debt_id: Optional[str] = None
+    schedule_id: Optional[str] = None
+    notes: Optional[str] = None
+    installment_number: Optional[int] = None
+    total_installments: Optional[int] = None
+    invoice_month: Optional[int] = None
+    invoice_year: Optional[int] = None
+    is_invoice_payment: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
-class SyncTestResponse(BaseModel):
+class MobileSyncPushRequest(BaseModel):
+    profile: ProfileType
+    transactions: List[MobileTransactionSyncItem] = Field(default_factory=list, description="Lista de lançamentos a serem criados ou sincronizados")
+
+class MobileSyncPushResponse(BaseModel):
     success: bool
-    message: str
-    spreadsheet_title: Optional[str] = None
-    sheets_found: List[str] = []
-    service_account_email: Optional[str] = None
+    server_timestamp: str
+    inserted_count: int = 0
+    updated_count: int = 0
+    synced_ids: List[str] = Field(default_factory=list, description="Lista de IDs das transações persistidas com sucesso")
+    errors: List[str] = Field(default_factory=list, description="Lista de erros encontrados durante a sincronização")
 
-class SyncTriggerRequest(BaseModel):
-    spreadsheet_id: Optional[str] = None
-
-class SyncResultResponse(BaseModel):
-    success: bool
-    message: str
-    imported_from_queue: int = 0
-    exported_to_mirror: int = 0
-    entity_counts: Dict[str, int] = Field(default_factory=dict, description="Quantitativo de registros exportados por tabela")
-    errors: List[str] = []
-
-class SyncPendingDetails(BaseModel):
-    pending_transactions: int = 0
-    pending_categories: int = 0
-    pending_items: int = 0
-    pending_accounts: int = 0
-    pending_contacts: int = 0
-    pending_debts: int = 0
-    pending_budgets: int = 0
-    pending_attachments: int = 0
-    queue_rows: int = 0
+class MobileSyncPullResponse(BaseModel):
+    server_timestamp: str
+    profile: Optional[ProfileType] = None
+    categories: List[CategoryResponse] = Field(default_factory=list)
+    accounts: List[AccountResponse] = Field(default_factory=list)
+    payment_methods: List[PaymentMethodResponse] = Field(default_factory=list)
+    credit_cards: List[CreditCardResponse] = Field(default_factory=list)
+    items: List[ItemResponse] = Field(default_factory=list)
+    contacts: List[ContactResponse] = Field(default_factory=list)
+    debts: List[DebtResponse] = Field(default_factory=list)
+    budgets: List[BudgetResponse] = Field(default_factory=list)
+    goals: List[GoalResponse] = Field(default_factory=list)
+    schedules: List[ScheduleResponse] = Field(default_factory=list)
+    transactions: List[TransactionResponse] = Field(default_factory=list)
 
 class SyncStatusResponse(BaseModel):
-    is_configured: bool = False
-    has_credentials: bool = False
-    spreadsheet_id: Optional[str] = None
-    spreadsheet_url: Optional[str] = None
-    service_account_email: Optional[str] = None
-    pending_send: int = 0
-    pending_receive: int = 0
-    total_pending: int = 0
-    has_pending: bool = False
+    api_online: bool = True
+    server_time: str
+    database: str = "SQLite WAL"
+    total_transactions: int = 0
+    total_attachments: int = 0
+    storage_healthy: bool = True
     last_sync_at: Optional[str] = None
     last_sync_status: Optional[str] = None
     last_action: Optional[str] = None
-    details: Optional[SyncPendingDetails] = None
 
 class SyncLogResponse(BaseModel):
     id: str
@@ -67,4 +89,3 @@ class SyncLogResponse(BaseModel):
     message: str
     details: Optional[str] = None
     created_at: str
-

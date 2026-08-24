@@ -254,11 +254,11 @@ CREATE TABLE attachments (
 
 CREATE UNIQUE INDEX ix_users_username ON users (username);
 
+CREATE INDEX idx_trans_profile_due ON transactions (profile, due_date);
+
 CREATE INDEX idx_trans_sync ON transactions (sync_status);
 
 CREATE INDEX idx_trans_status ON transactions (status);
-
-CREATE INDEX idx_trans_profile_due ON transactions (profile, due_date);
 
 CREATE INDEX idx_attachment_profile ON attachments (profile);
 

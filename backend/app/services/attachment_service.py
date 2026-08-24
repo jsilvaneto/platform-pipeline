@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 
 from app.models import Attachment, Transaction, generate_uuid, now_utc_iso
 from app.schemas.attachment import AttachmentResponse, AttachmentStatsResponse
-from app.services.google_sheets_service import get_config_value, set_config_value
+from app.services.system_service import get_config_value, set_config_value
 
 # Diretório base padrão de armazenamento local
 DEFAULT_ATTACHMENT_DIR = os.path.abspath(

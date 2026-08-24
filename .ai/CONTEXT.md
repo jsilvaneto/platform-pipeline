@@ -3,7 +3,7 @@
 ## 1. Filosofia e Visão do Produto
 O **Wallet** é uma plataforma de gestão financeira pessoal e empresarial, projetada para proporcionar controle financeiro total, privacidade irrestrita, agilidade operacional e resiliência com baixa dependência de infraestrutura em nuvem de terceiros.
 
-O sistema foi concebido para rodar perfeitamente em ambientes locais (WSL2 / Linux / Docker), com banco de dados embutido e espelhamento opcional em nuvem via Google Sheets.
+O sistema opera no modelo **Local-First / Offline-First**: roda com banco de dados embutido SQLite WAL no servidor (WSL2 / Linux / Docker) e possui sincronização direta e transparente com o aplicativo móvel nativo Android (Room Database), sem intermediários.
 
 ---
 
@@ -15,7 +15,7 @@ O sistema opera com isolamento rigoroso entre duas entidades financeiras:
 ### Regras Invariáveis dos Perfis:
 1. Toda entidade transacional (contas, categorias, itens, contatos, dívidas, orçamentos, lançamentos e agendamentos) possui o campo `profile` obrigatório.
 2. Não há mistura de dados em telas, relatórios de dashboard ou agregações financeiras entre os perfis.
-3. A alternância de perfil na interface web é instantânea e altera todo o contexto operacional do usuário.
+3. A alternância de perfil na interface web e mobile é instantânea e altera todo o contexto operacional do usuário.
 
 ---
 
@@ -59,8 +59,11 @@ O Wallet separa explicitamente a instituição financeira/custódia do instrumen
 
 ---
 
-## 7. Sincronização Nuvem (Google Sheets Mirror)
-O espelhamento com o Google Sheets permite manter uma cópia dos dados em nuvem e receber lançamentos remotos:
-- **`Transacoes`**: Aba que espelha os lançamentos do banco local SQLite para conferência e relatórios externos.
-- **`Fila_Mobile`**: Aba que recebe lançamentos gerados remotamente para importação e conciliação no banco local.
-- **Gestão via Web**: Credenciais (`credentials.json`) e ID da planilha são gerenciados e testados diretamente na interface em **Configurações &gt; Sincronização Nuvem**.
+## 7. Sincronização Direta Mobile & Arquitetura Offline-First (REST API + Room)
+O ecossistema móvel do Wallet adota a arquitetura **Offline-First**:
+- **Persistência Local (Room SQLite)**: O app Android opera 100% offline, permitindo lançamentos instantâneos na rua com latência zero ($< 10\text{ms}$).
+- **Sincronização Direta com a API REST**: Quando há conexão ativa (Wi-Fi, 4G/5G, VPN ou Tailscale), o `SyncWorker` em segundo plano sincroniza diretamente com a API FastAPI:
+  - **Push (`POST /api/v1/sync/mobile/push`)**: Envio em lote das transações criadas/alteradas offline.
+  - **Pull (`GET /api/v1/sync/mobile/pull`)**: Download dos dados mestres e transações atualizadas.
+  - **Comprovantes (`POST /api/v1/attachments/upload`)**: Upload direto das fotos de notas fiscais tiradas com a câmera do aparelho para o disco local do servidor.
+- **Privacidade Total**: Eliminação de intermediários em nuvem (como Google Planilhas), mantendo os dados exclusivamente sob custódia do usuário.

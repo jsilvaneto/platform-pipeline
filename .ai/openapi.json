@@ -4023,11 +4023,38 @@
     "/api/v1/sync/status": {
       "get": {
         "tags": [
-          "Sincronização Nuvem"
+          "Sincronização Mobile & API"
         ],
-        "summary": "Get Sync Pending Status",
-        "description": "Retorna o status em tempo real de alterações pendentes para enviar e receber.",
-        "operationId": "get_sync_pending_status_api_v1_sync_status_get",
+        "summary": "Get System Sync Status",
+        "description": "Retorna o status operacional da API, integridade do banco SQLite WAL,\nsaúde do diretório de armazenamento e último evento de sincronização.",
+        "operationId": "get_system_sync_status_api_v1_sync_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sync/mobile/pull": {
+      "get": {
+        "tags": [
+          "Sincronização Mobile & API"
+        ],
+        "summary": "Pull Mobile Data",
+        "description": "Exporta dados mestres (categorias, contas, formas de pagamento, cartões, itens, etc.)\ne lançamentos criados ou alterados para sincronização e cache offline no app mobile Android.",
+        "operationId": "pull_mobile_data_api_v1_sync_mobile_pull_get",
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -4035,16 +4062,44 @@
         ],
         "parameters": [
           {
-            "name": "check_remote",
+            "name": "profile",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "description": "Consultar Google Sheets para verificar a Fila_Mobile",
-              "default": true,
-              "title": "Check Remote"
+              "anyOf": [
+                {
+                  "enum": [
+                    "PESSOAL",
+                    "EMPRESA"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por PESSOAL ou EMPRESA",
+              "title": "Profile"
             },
-            "description": "Consultar Google Sheets para verificar a Fila_Mobile"
+            "description": "Filtrar por PESSOAL ou EMPRESA"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Timestamp ISO para filtro delta de alterações",
+              "title": "Since"
+            },
+            "description": "Timestamp ISO para filtro delta de alterações"
           }
         ],
         "responses": {
@@ -4053,7 +4108,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SyncStatusResponse"
+                  "$ref": "#/components/schemas/MobileSyncPullResponse"
                 }
               }
             }
@@ -4071,42 +4126,19 @@
         }
       }
     },
-    "/api/v1/sync/config": {
-      "get": {
-        "tags": [
-          "Sincronização Nuvem"
-        ],
-        "summary": "Get Sync Configuration",
-        "operationId": "get_sync_configuration_api_v1_sync_config_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncConfigResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      },
+    "/api/v1/sync/mobile/push": {
       "post": {
         "tags": [
-          "Sincronização Nuvem"
+          "Sincronização Mobile & API"
         ],
-        "summary": "Update Sync Configuration",
-        "operationId": "update_sync_configuration_api_v1_sync_config_post",
+        "summary": "Push Mobile Data",
+        "description": "Recebe em lote lançamentos criados ou alterados offline no aplicativo Android\ne os grava atomicamente no banco de dados SQLite local com resolução idempotente.",
+        "operationId": "push_mobile_data_api_v1_sync_mobile_push_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SyncConfigUpdate"
+                "$ref": "#/components/schemas/MobileSyncPushRequest"
               }
             }
           },
@@ -4118,219 +4150,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SyncConfigResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/sync/test": {
-      "post": {
-        "tags": [
-          "Sincronização Nuvem"
-        ],
-        "summary": "Test Sync Connection",
-        "operationId": "test_sync_connection_api_v1_sync_test_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SyncTriggerRequest"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncTestResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/sync/export": {
-      "post": {
-        "tags": [
-          "Sincronização Nuvem"
-        ],
-        "summary": "Export Data To Sheets",
-        "operationId": "export_data_to_sheets_api_v1_sync_export_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SyncTriggerRequest"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncResultResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/sync/import": {
-      "post": {
-        "tags": [
-          "Sincronização Nuvem"
-        ],
-        "summary": "Import Data From Queue",
-        "operationId": "import_data_from_queue_api_v1_sync_import_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SyncTriggerRequest"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncResultResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/sync/full": {
-      "post": {
-        "tags": [
-          "Sincronização Nuvem"
-        ],
-        "summary": "Trigger Full Sync",
-        "operationId": "trigger_full_sync_api_v1_sync_full_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SyncTriggerRequest"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncResultResponse"
+                  "$ref": "#/components/schemas/MobileSyncPushResponse"
                 }
               }
             }
@@ -4356,9 +4176,10 @@
     "/api/v1/sync/logs": {
       "get": {
         "tags": [
-          "Sincronização Nuvem"
+          "Sincronização Mobile & API"
         ],
         "summary": "List Sync Logs",
+        "description": "Retorna o histórico e registros de auditoria de sincronização móvel.",
         "operationId": "list_sync_logs_api_v1_sync_logs_get",
         "security": [
           {
@@ -4406,9 +4227,10 @@
       },
       "delete": {
         "tags": [
-          "Sincronização Nuvem"
+          "Sincronização Mobile & API"
         ],
         "summary": "Clear Sync Logs",
+        "description": "Limpa o histórico de auditoria de sincronização.",
         "operationId": "clear_sync_logs_api_v1_sync_logs_delete",
         "security": [
           {
@@ -8911,6 +8733,427 @@
         "type": "object",
         "title": "ItemUpdate"
       },
+      "MobileSyncPullResponse": {
+        "properties": {
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PESSOAL",
+                  "EMPRESA"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryResponse"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountResponse"
+            },
+            "type": "array",
+            "title": "Accounts"
+          },
+          "payment_methods": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentMethodResponse"
+            },
+            "type": "array",
+            "title": "Payment Methods"
+          },
+          "credit_cards": {
+            "items": {
+              "$ref": "#/components/schemas/CreditCardResponse"
+            },
+            "type": "array",
+            "title": "Credit Cards"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ContactResponse"
+            },
+            "type": "array",
+            "title": "Contacts"
+          },
+          "debts": {
+            "items": {
+              "$ref": "#/components/schemas/DebtResponse"
+            },
+            "type": "array",
+            "title": "Debts"
+          },
+          "budgets": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetResponse"
+            },
+            "type": "array",
+            "title": "Budgets"
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/GoalResponse"
+            },
+            "type": "array",
+            "title": "Goals"
+          },
+          "schedules": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleResponse"
+            },
+            "type": "array",
+            "title": "Schedules"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponse"
+            },
+            "type": "array",
+            "title": "Transactions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "server_timestamp"
+        ],
+        "title": "MobileSyncPullResponse"
+      },
+      "MobileSyncPushRequest": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "enum": [
+              "PESSOAL",
+              "EMPRESA"
+            ],
+            "title": "Profile"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/MobileTransactionSyncItem"
+            },
+            "type": "array",
+            "title": "Transactions",
+            "description": "Lista de lançamentos a serem criados ou sincronizados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile"
+        ],
+        "title": "MobileSyncPushRequest"
+      },
+      "MobileSyncPushResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "server_timestamp": {
+            "type": "string",
+            "title": "Server Timestamp"
+          },
+          "inserted_count": {
+            "type": "integer",
+            "title": "Inserted Count",
+            "default": 0
+          },
+          "updated_count": {
+            "type": "integer",
+            "title": "Updated Count",
+            "default": 0
+          },
+          "synced_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Synced Ids",
+            "description": "Lista de IDs das transações persistidas com sucesso"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Lista de erros encontrados durante a sincronização"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "server_timestamp"
+        ],
+        "title": "MobileSyncPushResponse"
+      },
+      "MobileTransactionSyncItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "UUID da transação gerado no cliente ou no servidor"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "RECEITA",
+              "DESPESA",
+              "TRANSFERENCIA"
+            ],
+            "title": "Type",
+            "default": "DESPESA"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "due_date": {
+            "type": "string",
+            "title": "Due Date"
+          },
+          "payment_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDENTE",
+              "CONCLUIDO",
+              "CANCELADO"
+            ],
+            "title": "Status",
+            "default": "PENDENTE"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "destination_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Account Id"
+          },
+          "credit_card_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Card Id"
+          },
+          "payment_method_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method Id"
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Id"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
+          "debt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt Id"
+          },
+          "schedule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Id"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "installment_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installment Number"
+          },
+          "total_installments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Installments"
+          },
+          "invoice_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Month"
+          },
+          "invoice_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Year"
+          },
+          "is_invoice_payment": {
+            "type": "integer",
+            "title": "Is Invoice Payment",
+            "default": 0
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "amount_cents",
+          "due_date"
+        ],
+        "title": "MobileTransactionSyncItem"
+      },
       "MonthlyTrendItem": {
         "properties": {
           "month": {
@@ -9987,111 +10230,6 @@
         ],
         "title": "StorageDirectoryConfigResponse"
       },
-      "SyncConfigResponse": {
-        "properties": {
-          "spreadsheet_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spreadsheet Id"
-          },
-          "spreadsheet_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spreadsheet Url"
-          },
-          "has_credentials": {
-            "type": "boolean",
-            "title": "Has Credentials",
-            "default": false
-          },
-          "service_account_email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Service Account Email"
-          },
-          "last_sync_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Sync At"
-          },
-          "last_sync_status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Sync Status"
-          },
-          "last_action": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Action"
-          }
-        },
-        "type": "object",
-        "title": "SyncConfigResponse"
-      },
-      "SyncConfigUpdate": {
-        "properties": {
-          "spreadsheet_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spreadsheet Id"
-          },
-          "credentials_json": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Credentials Json"
-          }
-        },
-        "type": "object",
-        "title": "SyncConfigUpdate"
-      },
       "SyncLogResponse": {
         "properties": {
           "id": {
@@ -10146,165 +10284,36 @@
         ],
         "title": "SyncLogResponse"
       },
-      "SyncPendingDetails": {
-        "properties": {
-          "pending_transactions": {
-            "type": "integer",
-            "title": "Pending Transactions",
-            "default": 0
-          },
-          "pending_categories": {
-            "type": "integer",
-            "title": "Pending Categories",
-            "default": 0
-          },
-          "pending_items": {
-            "type": "integer",
-            "title": "Pending Items",
-            "default": 0
-          },
-          "pending_accounts": {
-            "type": "integer",
-            "title": "Pending Accounts",
-            "default": 0
-          },
-          "pending_contacts": {
-            "type": "integer",
-            "title": "Pending Contacts",
-            "default": 0
-          },
-          "pending_debts": {
-            "type": "integer",
-            "title": "Pending Debts",
-            "default": 0
-          },
-          "pending_budgets": {
-            "type": "integer",
-            "title": "Pending Budgets",
-            "default": 0
-          },
-          "pending_attachments": {
-            "type": "integer",
-            "title": "Pending Attachments",
-            "default": 0
-          },
-          "queue_rows": {
-            "type": "integer",
-            "title": "Queue Rows",
-            "default": 0
-          }
-        },
-        "type": "object",
-        "title": "SyncPendingDetails"
-      },
-      "SyncResultResponse": {
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "title": "Success"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          },
-          "imported_from_queue": {
-            "type": "integer",
-            "title": "Imported From Queue",
-            "default": 0
-          },
-          "exported_to_mirror": {
-            "type": "integer",
-            "title": "Exported To Mirror",
-            "default": 0
-          },
-          "entity_counts": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "type": "object",
-            "title": "Entity Counts",
-            "description": "Quantitativo de registros exportados por tabela"
-          },
-          "errors": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Errors",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "success",
-          "message"
-        ],
-        "title": "SyncResultResponse"
-      },
       "SyncStatusResponse": {
         "properties": {
-          "is_configured": {
+          "api_online": {
             "type": "boolean",
-            "title": "Is Configured",
-            "default": false
+            "title": "Api Online",
+            "default": true
           },
-          "has_credentials": {
-            "type": "boolean",
-            "title": "Has Credentials",
-            "default": false
+          "server_time": {
+            "type": "string",
+            "title": "Server Time"
           },
-          "spreadsheet_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spreadsheet Id"
+          "database": {
+            "type": "string",
+            "title": "Database",
+            "default": "SQLite WAL"
           },
-          "spreadsheet_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spreadsheet Url"
-          },
-          "service_account_email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Service Account Email"
-          },
-          "pending_send": {
+          "total_transactions": {
             "type": "integer",
-            "title": "Pending Send",
+            "title": "Total Transactions",
             "default": 0
           },
-          "pending_receive": {
+          "total_attachments": {
             "type": "integer",
-            "title": "Pending Receive",
+            "title": "Total Attachments",
             "default": 0
           },
-          "total_pending": {
-            "type": "integer",
-            "title": "Total Pending",
-            "default": 0
-          },
-          "has_pending": {
+          "storage_healthy": {
             "type": "boolean",
-            "title": "Has Pending",
-            "default": false
+            "title": "Storage Healthy",
+            "default": true
           },
           "last_sync_at": {
             "anyOf": [
@@ -10338,85 +10347,13 @@
               }
             ],
             "title": "Last Action"
-          },
-          "details": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SyncPendingDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "title": "SyncStatusResponse"
-      },
-      "SyncTestResponse": {
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "title": "Success"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          },
-          "spreadsheet_title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spreadsheet Title"
-          },
-          "sheets_found": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sheets Found",
-            "default": []
-          },
-          "service_account_email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Service Account Email"
           }
         },
         "type": "object",
         "required": [
-          "success",
-          "message"
+          "server_time"
         ],
-        "title": "SyncTestResponse"
-      },
-      "SyncTriggerRequest": {
-        "properties": {
-          "spreadsheet_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spreadsheet Id"
-          }
-        },
-        "type": "object",
-        "title": "SyncTriggerRequest"
+        "title": "SyncStatusResponse"
       },
       "SystemStatsResponse": {
         "properties": {
