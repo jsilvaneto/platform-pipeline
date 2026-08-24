@@ -222,9 +222,18 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
 
 ---
 
-### Fase 2: Aplicativo Mobile Android (Planejado)
+### Fase 2: Aplicativo Mobile Android (Pronto para Desenvolvimento no Android Studio)
 
-- [ ] Arquitetura offline-first para registro rápido de despesas e receitas em campo.
-- [ ] Envio de lançamentos pendentes para a aba `Fila_Mobile` do Google Sheets.
-- [ ] Consulta de saldo e limites de orçamentos consolidados.
-- [ ] Documentação de requisitos detalhada em [.ai/ANDROID_APP.md](file:///home/jsilvaneto/projetos/wallet/.ai/ANDROID_APP.md).
+- [x] **Especificação Técnica & Arquitetura Consolidada**:
+  - [x] Documento mestre [.ai/ANDROID_APP.md](file:///home/jsilvaneto/projetos/wallet/.ai/ANDROID_APP.md) atualizado com stack Kotlin 2.0 + Jetpack Compose + Material 3 + Room + Retrofit + WorkManager.
+  - [x] Mapeamento detalhado de DTOs e entidades `@Entity` Room com tipagem estrita de valores em centavos (`amount_cents: Long`).
+  - [x] Definição de contratos de API REST assíncronos (`WalletApiService`).
+  - [x] Estratégia de sincronização offline-first e fila de segundo plano com WorkManager.
+  - [x] Fluxos de telas (Quick Entry, Dashboard, Extrato, Cartões e Faturas, Configuração de Servidor e Biometria).
+  - [x] Estrutura de pacotes recomendada e permissões do `AndroidManifest.xml`.
+- [ ] **Implementação no Android Studio**:
+  - [ ] Criação do projeto base (Empty Compose Activity).
+  - [ ] Configuração do Room Database local com DAOs.
+  - [ ] Camada de rede Retrofit com interceptor JWT.
+  - [ ] Interface declarativa Jetpack Compose (Tema Dark/Light, Hero de Valores BRL, Chips e Grid).
+  - [ ] Sincronização offline e envio de comprovantes com CameraX.
