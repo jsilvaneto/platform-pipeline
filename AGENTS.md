@@ -39,10 +39,16 @@ Ao concluir qualquer tarefa ou entrega de funcionalidade:
   - Atalhos contextuais (ex: auto-preenchimento de categorias ao selecionar itens).
   - Feedback visual imediato para ações de exclusão, edição e sincronização.
 
-### 2.3 Convenções de Nomenclatura e Formatação
+### 2.3 Mobile Android (Kotlin / Jetpack Compose / Room)
+- **Valores Monetários em Centavos**: `amountCents: Long` ou `Int`. Nunca utilize `Float` ou `Double` para cálculos financeiros.
+- **Offline-First & Room**: Gravações locais instantâneas com `sync_status = "PENDENTE"`. Sincronização em background orquestrada via `WorkManager`.
+- **UI Declarativa**: Jetpack Compose com Material 3, tipografia padronizada e suporte a temas Dark/Light.
+- **Código**: `camelCase` para métodos/variáveis, `PascalCase` para Composables/Classes/Interfaces.
+
+### 2.4 Convenções de Nomenclatura e Formatação
 - **Enums e Constantes no Banco**: Sempre em `UPPERCASE` (ex: `PESSOAL`, `EMPRESA`, `RECEITA`, `DESPESA`, `PENDENTE`, `CONCLUIDO`, `OBRIGATORIO`, `NECESSARIO`, `DESEJO`, `NENHUM`).
 - **Cadastros pelo Usuário**: Sugerir e manter cadastros em `Title Case` (ex: *Alimentação*, *Supermercado*, *Aluguel Residencial*).
-- **Código**: `snake_case` para Python; `camelCase` e `PascalCase` para TypeScript/React.
+- **Código**: `snake_case` para Python; `camelCase` e `PascalCase` para TypeScript/React e Kotlin/Compose.
 
 ---
 
@@ -52,5 +58,7 @@ Ao concluir qualquer tarefa ou entrega de funcionalidade:
 | :--- | :--- | :--- |
 | **Inicialização Completa** | `./start.sh` | Inicia Backend (porta 8000) e Frontend (porta 5173) no WSL com encerramento limpo. |
 | **Build do Frontend** | `cd frontend && npm run build` | Valida tipagem TypeScript e gera bundle de produção via Vite. |
+| **Build do Android** | `cd android && ./gradlew assembleDebug` | Compila o aplicativo mobile Android e valida o projeto no Gradle. |
 | **Execução de Testes** | `./backend/venv/bin/python <script_de_teste>.py` | Executa rotinas de validação de API e banco de dados. |
 | **Exportação de Schemas** | `./backend/venv/bin/python scratch/export_metadata.py` | Atualiza `.ai/openapi.json` e `.ai/schema.sql`. |
+

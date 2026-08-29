@@ -17,6 +17,7 @@ from app.schemas.sync import (
     SyncStatusResponse,
 )
 from app.services.attachment_service import get_storage_directory, is_directory_writable
+from app.services.credit_card_service import sync_all_card_invoices
 
 async def record_sync_log(
     db: AsyncSession,
@@ -281,6 +282,12 @@ async def process_mobile_sync_push(
             errors.append(f"Erro ao processar lançamento '{item.description}' ({getattr(item, 'id', 'sem_id')}): {str(e)}")
 
     await db.commit()
+
+    # Sincroniza faturas consolidadas de cartão se houver lançamentos de cartão
+    try:
+        await sync_all_card_invoices(db, profile)
+    except Exception as e:
+        print(f"Aviso ao sincronizar faturas no push mobile: {e}")
 
     total_processed = inserted_count + updated_count
     log_status = "SUCESSO" if not errors else ("PARCIAL" if total_processed > 0 else "ERRO")

@@ -37,3 +37,18 @@ frontend/.vite/
 *.log
 .DS_Store
 Thumbs.db
+
+# Android Studio & Gradle
+android/.gradle/
+android/build/
+android/*/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/*/*.iml
+.gradle/
+*.apk
+*.aab
+*.dex
+*.class
+
