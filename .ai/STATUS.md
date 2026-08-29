@@ -261,6 +261,7 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
   - [x] Telas iniciais em Compose: `HomeScreen.kt` (Dashboard e listagem reativa) e `QuickEntryScreen.kt` (Entrada rápida e gravação offline).
   - [x] `.gitignore` da raiz atualizado com regras de compilação Gradle e Android Studio.
   - [x] Registrado no [ADR 016](file:///home/jsilvaneto/projetos/wallet/.ai/DECISIONS/016-estrutura-monorepo-modulo-android-nativo.md).
+- [x] **Correção de Ambiente de Build WSL**: Resolvido erro `java.io.IOException: Incorrect function` ao compilar no Windows/WSL desativando Gradle Daemon, VFS Watch e Caching no `gradle.properties`.
 - [ ] **Evoluções Futuras do App Mobile**:
   - [ ] Telas de Cartões de Crédito e Faturas no Compose.
   - [ ] Integração com `CameraX` para captura em tempo real de notas fiscais.
