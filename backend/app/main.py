@@ -208,6 +208,9 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     await migrate_database_schema()
     await seed_initial_data()
+    async with AsyncSessionLocal() as session:
+        from app.services.credit_card_service import sync_all_card_invoices
+        await sync_all_card_invoices(session)
     yield
     await engine.dispose()
 

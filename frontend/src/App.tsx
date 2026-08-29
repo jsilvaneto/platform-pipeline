@@ -3,12 +3,14 @@ import { AppProvider, useApp } from "./context/AppContext";
 import { Header } from "./components/Header";
 import { Dashboard } from "./pages/Dashboard";
 import { Transactions } from "./pages/Transactions";
+import { CreditCards } from "./pages/CreditCards";
 import { Planning } from "./pages/Planning";
 import { Settings } from "./pages/Settings";
 import { api } from "./api/client";
 import { 
   LayoutDashboard, ListFilter, TrendingUp, Settings as SettingsIcon, 
-  Wallet as WalletIcon, Lock, User as UserIcon, LogIn, AlertCircle
+  Wallet as WalletIcon, Lock, User as UserIcon, LogIn, AlertCircle,
+  CreditCard as CreditCardIcon
 } from "lucide-react";
 
 const AuthScreen: React.FC = () => {
@@ -141,7 +143,7 @@ const AuthScreen: React.FC = () => {
 
 const MainLayout: React.FC = () => {
   const { token } = useApp();
-  const [activeTab, setActiveTab] = useState<"dashboard" | "transactions" | "planning" | "settings">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "transactions" | "credit-cards" | "planning" | "settings">("dashboard");
 
   if (!token) {
     return <AuthScreen />;
@@ -179,6 +181,18 @@ const MainLayout: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab("credit-cards")}
+            className={`flex items-center gap-2 py-3.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === "credit-cards"
+                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                : "border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            }`}
+          >
+            <CreditCardIcon className="w-4 h-4" />
+            <span>Cartões & Faturas</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("planning")}
             className={`flex items-center gap-2 py-3.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
               activeTab === "planning"
@@ -208,6 +222,7 @@ const MainLayout: React.FC = () => {
       <main className="flex-1 w-full max-w-[1780px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6">
         {activeTab === "dashboard" && <Dashboard onNavigateToPlanning={() => setActiveTab("planning")} />}
         {activeTab === "transactions" && <Transactions />}
+        {activeTab === "credit-cards" && <CreditCards />}
         {activeTab === "planning" && <Planning />}
         {activeTab === "settings" && <Settings />}
       </main>

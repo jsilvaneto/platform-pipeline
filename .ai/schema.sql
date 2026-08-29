@@ -260,10 +260,10 @@ CREATE INDEX idx_trans_sync ON transactions (sync_status);
 
 CREATE INDEX idx_trans_status ON transactions (status);
 
+CREATE INDEX idx_attachment_sync ON attachments (sync_status);
+
 CREATE INDEX idx_attachment_profile ON attachments (profile);
 
 CREATE INDEX idx_attachment_type ON attachments (attachment_type);
 
 CREATE INDEX idx_attachment_transaction ON attachments (transaction_id);
-
-CREATE INDEX idx_attachment_sync ON attachments (sync_status);

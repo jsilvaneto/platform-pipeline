@@ -15,6 +15,9 @@ interface TransactionModalProps {
   onClose: () => void;
   onSuccess: () => void;
   transactionToEdit?: Transaction | null;
+  initialCreditCardId?: string;
+  initialType?: TransactionType;
+  initialMode?: Mode;
 }
 
 type Mode = "UNICO" | "PARCELADO" | "RECORRENTE";
@@ -23,7 +26,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   isOpen, 
   onClose, 
   onSuccess,
-  transactionToEdit 
+  transactionToEdit,
+  initialCreditCardId,
+  initialType,
+  initialMode
 }) => {
   const { profile } = useApp();
   const isEditing = !!transactionToEdit;
@@ -32,8 +38,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const paymentDatePickerRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<Mode>("UNICO");
-  const [type, setType] = useState<TransactionType>("DESPESA");
+  const [mode, setMode] = useState<Mode>(initialMode || "UNICO");
+  const [type, setType] = useState<TransactionType>(initialType || "DESPESA");
   const [status, setStatus] = useState<"PENDENTE" | "CONCLUIDO">("PENDENTE");
   const [itemId, setItemId] = useState("");
   const [description, setDescription] = useState("");
@@ -42,7 +48,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [accountId, setAccountId] = useState("");
   const [destinationAccountId, setDestinationAccountId] = useState("");
   const [paymentMethodId, setPaymentMethodId] = useState("");
-  const [creditCardId, setCreditCardId] = useState("");
+  const [creditCardId, setCreditCardId] = useState(initialCreditCardId || "");
   const [contactId, setContactId] = useState("");
   const [dueDateStr, setDueDateStr] = useState<string>(getTodayBR());
   const [paymentDateStr, setPaymentDateStr] = useState<string>("");
@@ -107,6 +113,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           if (catRes.data.length > 0 && !categoryId) {
             setCategoryId(catRes.data[0].id);
           }
+          if (initialCreditCardId) {
+            setCreditCardId(initialCreditCardId);
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar dependências:", err);
@@ -138,19 +147,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setDueDateStr(getTodayBR());
       setPaymentDateStr("");
       setStatus("PENDENTE");
-      setMode("UNICO");
+      setMode(initialMode || "UNICO");
+      if (initialType) setType(initialType);
       setDescription("");
       setAmountStr("");
       setItemId("");
       setAccountId("");
       setDestinationAccountId("");
       setPaymentMethodId("");
-      setCreditCardId("");
+      setCreditCardId(initialCreditCardId || "");
       setContactId("");
       setNotes("");
       setUploadedAttachments([]);
     }
-  }, [isOpen, profile, type, transactionToEdit]);
+  }, [isOpen, profile, type, transactionToEdit, initialCreditCardId, initialType, initialMode]);
 
   if (!isOpen) return null;
 
@@ -197,12 +207,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       const computedDueBR = formatDateToBR(computedDueISO);
 
       if (isAfterClosing) {
-        setCardHint(`✨ Melhor dia de compra: compra após o fechamento (dia ${card.closing_day}). Entrará na fatura de ${String(invMonth).padStart(2, "0")}/${invYear} com vencimento em ${computedDueBR}.`);
+        setCardHint(`✨ Melhor dia de compra: compra após o fechamento (dia ${card.closing_day}). Entrará na fatura de ${String(invMonth).padStart(2, "0")}/${invYear} com vencimento em ${computedDueBR}. Esta compra fica organizada na tela de Cartões & Faturas.`);
       } else {
-        setCardHint(`Fatura de ${String(invMonth).padStart(2, "0")}/${invYear} (vence em ${computedDueBR}).`);
+        setCardHint(`Fatura de ${String(invMonth).padStart(2, "0")}/${invYear} (vencimento em ${computedDueBR}). Esta compra fica organizada na tela de Cartões & Faturas.`);
       }
     }
   };
+
+  useEffect(() => {
+    if (initialCreditCardId && creditCards.length > 0) {
+      handleCardChange(initialCreditCardId);
+    }
+  }, [initialCreditCardId, creditCards]);
 
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

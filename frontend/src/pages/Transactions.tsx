@@ -1036,6 +1036,14 @@ export const Transactions: React.FC = () => {
                                 </span>
                               )}
 
+                              {/* Badge Fatura de Cartão */}
+                              {t.is_invoice_payment === 1 && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
+                                  <CreditCard className="w-3 h-3 text-purple-500" />
+                                  <span>Fatura de Cartão</span>
+                                </span>
+                              )}
+
                               {/* Badge de Comprovantes / Anexos com Tooltip Discriminado */}
                               {t.attachments && t.attachments.length > 0 && (() => {
                                 const count = t.attachments.length;

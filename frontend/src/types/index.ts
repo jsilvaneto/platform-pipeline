@@ -43,6 +43,13 @@ export interface CreditCard {
   created_at: string;
 }
 
+export interface CreditCardInvoiceCategoryBreakdown {
+  category_id: string;
+  category_name: string;
+  amount_cents: number;
+  percentage: number;
+}
+
 export interface CreditCardInvoiceItem {
   id: string;
   description: string;
@@ -58,6 +65,8 @@ export interface CreditCardInvoiceItem {
   total_installments?: number | null;
   status: TransactionStatus;
   notes?: string | null;
+  attachments?: Attachment[];
+  attachments_count?: number;
 }
 
 export interface CreditCardInvoiceSummary {
@@ -77,6 +86,7 @@ export interface CreditCardInvoiceSummary {
 
 export interface CreditCardInvoiceDetail extends CreditCardInvoiceSummary {
   items: CreditCardInvoiceItem[];
+  category_breakdown?: CreditCardInvoiceCategoryBreakdown[];
 }
 
 export interface CreditCardInvoiceSettleRequest {

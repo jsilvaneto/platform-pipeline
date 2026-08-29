@@ -107,5 +107,16 @@ async def create_schedule_with_transactions(db: AsyncSession, schedule_in: Sched
         db.add(trans)
 
     await db.commit()
+
+    # Se vinculado a cartão de crédito, sincroniza as faturas geradas
+    if card and base_inv_m is not None and base_inv_y is not None:
+        from app.services.credit_card_service import sync_card_invoice_transaction
+        for i in range(count):
+            tot_m = (base_inv_m - 1) + i
+            iy = base_inv_y + tot_m // 12
+            im = tot_m % 12 + 1
+            await sync_card_invoice_transaction(db, card.id, iy, im)
+        await db.commit()
+
     await db.refresh(new_schedule)
     return new_schedule

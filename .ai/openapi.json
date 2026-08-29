@@ -2792,6 +2792,18 @@
             "description": "Filtrar por Cartão de Crédito"
           },
           {
+            "name": "include_card_expenses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Incluir compras individuais de cartão de crédito no extrato geral",
+              "default": false,
+              "title": "Include Card Expenses"
+            },
+            "description": "Incluir compras individuais de cartão de crédito no extrato geral"
+          },
+          {
             "name": "is_invoice_payment",
             "in": "query",
             "required": false,
@@ -7151,6 +7163,34 @@
         ],
         "title": "CreditCardCreate"
       },
+      "CreditCardInvoiceCategoryBreakdown": {
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "title": "Category Id"
+          },
+          "category_name": {
+            "type": "string",
+            "title": "Category Name"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "percentage": {
+            "type": "number",
+            "title": "Percentage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_id",
+          "category_name",
+          "amount_cents",
+          "percentage"
+        ],
+        "title": "CreditCardInvoiceCategoryBreakdown"
+      },
       "CreditCardInvoiceDetail": {
         "properties": {
           "card_id": {
@@ -7212,6 +7252,14 @@
             },
             "type": "array",
             "title": "Items",
+            "default": []
+          },
+          "category_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/CreditCardInvoiceCategoryBreakdown"
+            },
+            "type": "array",
+            "title": "Category Breakdown",
             "default": []
           }
         },
@@ -7336,6 +7384,18 @@
               }
             ],
             "title": "Notes"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentResponse"
+            },
+            "type": "array",
+            "title": "Attachments"
+          },
+          "attachments_count": {
+            "type": "integer",
+            "title": "Attachments Count",
+            "default": 0
           }
         },
         "type": "object",

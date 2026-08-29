@@ -12,7 +12,11 @@ from app.schemas.transaction import (
     TransactionBatchAction, TransactionBatchComplete, TransactionBatchUpdate, TransactionBatchResponse
 )
 from app.services.attachment_service import enrich_attachment_schema
-from app.services.credit_card_service import calculate_invoice_period_and_due_date
+from app.services.credit_card_service import (
+    calculate_invoice_period_and_due_date,
+    sync_card_invoice_transaction,
+    sync_all_card_invoices
+)
 from app.api.v1.deps import get_current_user
 from datetime import datetime, timezone, date
 
@@ -40,6 +44,7 @@ async def list_transactions(
     account_id: Optional[str] = Query(None, description="Filtrar por Conta Bancária / Carteira"),
     payment_method_id: Optional[str] = Query(None, description="Filtrar por Forma de Pagamento"),
     credit_card_id: Optional[str] = Query(None, description="Filtrar por Cartão de Crédito"),
+    include_card_expenses: bool = Query(False, description="Incluir compras individuais de cartão de crédito no extrato geral"),
     is_invoice_payment: Optional[bool] = Query(None, description="Filtrar lançamentos de débito de fatura"),
     contact_id: Optional[str] = Query(None, description="Filtrar por Contato / Favorecido"),
     debt_id: Optional[str] = Query(None, description="Filtrar por Dívida vinculada"),
@@ -48,6 +53,12 @@ async def list_transactions(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user)
 ):
+    # Sincroniza faturas ativas para garantir que o lançamento consolidado de fatura reflita o consumo atualizado
+    if isinstance(profile, str) and profile:
+        await sync_all_card_invoices(db, profile=profile)
+    else:
+        await sync_all_card_invoices(db)
+
     query = select(Transaction).options(selectinload(Transaction.attachments))
     if isinstance(profile, str) and profile:
         query = query.where(Transaction.profile == profile)
@@ -71,12 +82,19 @@ async def list_transactions(
                 Transaction.destination_account_id == account_id
             )
         )
-    if isinstance(payment_method_id, str) and payment_method_id:
-        query = query.where(Transaction.payment_method_id == payment_method_id)
-    if isinstance(credit_card_id, str) and credit_card_id:
-        query = query.where(Transaction.credit_card_id == credit_card_id)
-    if is_invoice_payment is not None:
+    if isinstance(is_invoice_payment, bool):
         query = query.where(Transaction.is_invoice_payment == (1 if is_invoice_payment else 0))
+        if isinstance(credit_card_id, str) and credit_card_id:
+            query = query.where(Transaction.credit_card_id == credit_card_id)
+    elif not include_card_expenses:
+        # Por padrão, mantém o extrato de lançamentos limpo:
+        # Exibe apenas movimentações diretas de contas/caixas e despesas consolidadas de fatura
+        if isinstance(credit_card_id, str) and credit_card_id:
+            query = query.where(Transaction.credit_card_id == credit_card_id, Transaction.is_invoice_payment == 1)
+        else:
+            query = query.where(or_(Transaction.credit_card_id.is_(None), Transaction.is_invoice_payment == 1))
+    elif isinstance(credit_card_id, str) and credit_card_id:
+        query = query.where(Transaction.credit_card_id == credit_card_id)
     if isinstance(contact_id, str) and contact_id:
         query = query.where(Transaction.contact_id == contact_id)
     if isinstance(debt_id, str) and debt_id:
@@ -85,7 +103,7 @@ async def list_transactions(
         term = f"%{search.strip()}%"
         query = query.where(or_(Transaction.description.ilike(term), Transaction.notes.ilike(term)))
         
-    query = query.order_by(Transaction.due_date.asc(), Transaction.created_at.asc())
+    query = query.execution_options(populate_existing=True).order_by(Transaction.due_date.asc(), Transaction.created_at.asc())
     result = await db.execute(query)
     transactions = result.scalars().all()
     return [enrich_transaction_response(t) for t in transactions]
@@ -169,6 +187,11 @@ async def create_transaction(
         )
         await db.commit()
 
+    # Se for compra individual no cartão, sincroniza o lançamento consolidado de fatura na tela de lançamentos
+    if new_trans.credit_card_id and new_trans.invoice_year and new_trans.invoice_month and new_trans.is_invoice_payment == 0:
+        await sync_card_invoice_transaction(db, new_trans.credit_card_id, new_trans.invoice_year, new_trans.invoice_month)
+        await db.commit()
+
     # Recarrega com relacionamentos
     query = select(Transaction).options(selectinload(Transaction.attachments)).where(Transaction.id == new_trans.id)
     reloaded = (await db.execute(query)).scalar_one()
@@ -208,6 +231,21 @@ async def complete_transaction(
         trans.sync_status = "PENDENTE"
         trans.updated_at = datetime.now(timezone.utc).isoformat()
         
+        # Se for liquidação de fatura de cartão, baixa todas as compras individuais da fatura
+        if trans.is_invoice_payment == 1 and trans.credit_card_id and trans.invoice_year and trans.invoice_month:
+            card_items_q = select(Transaction).where(
+                Transaction.credit_card_id == trans.credit_card_id,
+                Transaction.invoice_year == trans.invoice_year,
+                Transaction.invoice_month == trans.invoice_month,
+                Transaction.is_invoice_payment == 0,
+                Transaction.type == "DESPESA"
+            )
+            card_items = (await db.execute(card_items_q)).scalars().all()
+            for ci in card_items:
+                ci.status = "CONCLUIDO"
+                ci.payment_date = trans.payment_date
+                ci.sync_status = "PENDENTE"
+
         # Abatimento em dívida
         if trans.debt_id:
             debt_query = select(Debt).where(Debt.id == trans.debt_id)
@@ -243,6 +281,21 @@ async def uncomplete_transaction(
         trans.sync_status = "PENDENTE"
         trans.updated_at = datetime.now(timezone.utc).isoformat()
         
+        # Se for fatura de cartão, retorna todas as compras da fatura para PENDENTE
+        if trans.is_invoice_payment == 1 and trans.credit_card_id and trans.invoice_year and trans.invoice_month:
+            card_items_q = select(Transaction).where(
+                Transaction.credit_card_id == trans.credit_card_id,
+                Transaction.invoice_year == trans.invoice_year,
+                Transaction.invoice_month == trans.invoice_month,
+                Transaction.is_invoice_payment == 0,
+                Transaction.type == "DESPESA"
+            )
+            card_items = (await db.execute(card_items_q)).scalars().all()
+            for ci in card_items:
+                ci.status = "PENDENTE"
+                ci.payment_date = None
+                ci.sync_status = "PENDENTE"
+
         # Restaura saldo de dívida
         if trans.debt_id:
             debt_query = select(Debt).where(Debt.id == trans.debt_id)
@@ -293,6 +346,10 @@ async def update_transaction(
     if not trans:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transação não encontrada")
     
+    old_card_id = trans.credit_card_id
+    old_inv_y = trans.invoice_year
+    old_inv_m = trans.invoice_month
+
     update_data = trans_in.model_dump(exclude_unset=True)
     attachment_ids = update_data.pop("attachment_ids", None)
 
@@ -344,6 +401,13 @@ async def update_transaction(
         )
 
     await db.commit()
+
+    # Sincroniza faturas se envolver cartão de crédito
+    if old_card_id and old_inv_y and old_inv_m:
+        await sync_card_invoice_transaction(db, old_card_id, old_inv_y, old_inv_m)
+    if trans.credit_card_id and trans.invoice_year and trans.invoice_month and (trans.credit_card_id != old_card_id or trans.invoice_year != old_inv_y or trans.invoice_month != old_inv_m):
+        await sync_card_invoice_transaction(db, trans.credit_card_id, trans.invoice_year, trans.invoice_month)
+    await db.commit()
     
     # Recarrega com anexos atualizados
     reload_query = select(Transaction).options(selectinload(Transaction.attachments)).where(Transaction.id == trans.id)
@@ -361,8 +425,18 @@ async def delete_transaction(
     trans = result.scalar_one_or_none()
     if not trans:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transação não encontrada")
+    
+    card_id = trans.credit_card_id
+    inv_y = trans.invoice_year
+    inv_m = trans.invoice_month
+    is_inv = trans.is_invoice_payment
+
     await db.delete(trans)
     await db.commit()
+
+    if card_id and inv_y and inv_m and is_inv == 0:
+        await sync_card_invoice_transaction(db, card_id, inv_y, inv_m)
+        await db.commit()
 
 # --- ENDPOINTS DE AÇÕES EM LOTE (BATCH ACTIONS) ---
 

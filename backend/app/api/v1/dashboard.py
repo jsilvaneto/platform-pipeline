@@ -45,6 +45,7 @@ async def get_dashboard_summary(
         Transaction.profile == profile,
         Transaction.type == "DESPESA",
         Transaction.status == "CONCLUIDO",
+        Transaction.is_invoice_payment == 0,
         Transaction.due_date.startswith(month_str)
     )
     exp_real = (await db.execute(exp_real_query)).scalar() or 0
@@ -62,6 +63,7 @@ async def get_dashboard_summary(
         Transaction.profile == profile,
         Transaction.type == "DESPESA",
         Transaction.status == "PENDENTE",
+        Transaction.is_invoice_payment == 0,
         Transaction.due_date.startswith(month_str)
     )
     exp_pend = (await db.execute(exp_pend_query)).scalar() or 0
@@ -171,6 +173,7 @@ async def get_dashboard_summary(
             Transaction.profile == profile,
             Transaction.type == "DESPESA",
             Transaction.status == "CONCLUIDO",
+            Transaction.is_invoice_payment == 0,
             Transaction.due_date.startswith(hist_str)
         )
         h_exp = (await db.execute(h_exp_q)).scalar() or 0
@@ -199,6 +202,7 @@ async def get_dashboard_summary(
             Transaction.profile == profile,
             Transaction.type == "DESPESA",
             Transaction.status != "CANCELADO",
+            Transaction.is_invoice_payment == 0,
             Transaction.due_date.startswith(month_str)
         )
         .group_by(Category.nature)
@@ -247,6 +251,7 @@ async def get_dashboard_summary(
             Transaction.profile == profile,
             Transaction.type == "DESPESA",
             Transaction.status != "CANCELADO",
+            Transaction.is_invoice_payment == 0,
             Transaction.due_date.startswith(month_str)
         )
         .group_by(Category.id, Category.name)
@@ -285,6 +290,7 @@ async def get_dashboard_summary(
             Transaction.category_id == b.category_id,
             Transaction.type == "DESPESA",
             Transaction.status != "CANCELADO",
+            Transaction.is_invoice_payment == 0,
             Transaction.due_date.startswith(month_str)
         )
         spent = (await db.execute(spent_q)).scalar() or 0
@@ -355,6 +361,7 @@ async def get_dashboard_summary(
             Transaction.profile == profile,
             Transaction.type == "DESPESA",
             Transaction.status != "CANCELADO",
+            Transaction.is_invoice_payment == 0,
             Transaction.due_date.startswith(month_str)
         )
         .group_by(Transaction.payment_method_id, PaymentMethod.name)

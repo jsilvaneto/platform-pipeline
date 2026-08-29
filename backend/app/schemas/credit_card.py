@@ -41,7 +41,13 @@ class CreditCardResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-# ----------------- FATURAS (INVOICES) -----------------
+from app.schemas.attachment import AttachmentResponse
+
+class CreditCardInvoiceCategoryBreakdown(BaseModel):
+    category_id: str
+    category_name: str
+    amount_cents: int
+    percentage: float
 
 class CreditCardInvoiceItem(BaseModel):
     id: str
@@ -58,6 +64,8 @@ class CreditCardInvoiceItem(BaseModel):
     total_installments: Optional[int] = None
     status: Literal["PENDENTE", "CONCLUIDO", "CANCELADO"]
     notes: Optional[str] = None
+    attachments: List[AttachmentResponse] = Field(default_factory=list)
+    attachments_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -77,6 +85,7 @@ class CreditCardInvoiceSummary(BaseModel):
 
 class CreditCardInvoiceDetail(CreditCardInvoiceSummary):
     items: List[CreditCardInvoiceItem] = []
+    category_breakdown: List[CreditCardInvoiceCategoryBreakdown] = []
 
 class CreditCardInvoiceSettleRequest(BaseModel):
     account_id: str = Field(..., description="ID da conta bancária de onde sairá o pagamento")

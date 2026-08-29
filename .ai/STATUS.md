@@ -206,6 +206,24 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
   - [x] **Mapa de Comprometimento de Renda**: Análise de renda presa por contratos, dívidas e cartões vs. índice de liberdade financeira.
   - [x] Registrado no [ADR 014](file:///home/jsilvaneto/projetos/wallet/.ai/DECISIONS/014-modulo-de-planejamento-financeiro-e-futuro.md).
 
+- [x] **Refatoração do Módulo de Cartões de Crédito e Ciclo de Faturas**:
+  - [x] **Isolamento Completo do Extrato de Lançamentos**: Endpoint `GET /api/v1/transactions` limpo por padrão, retornando apenas movimentações de contas bancárias e a despesa consolidada de faturas (`is_invoice_payment == 1`), com parâmetro `include_card_expenses` opcional.
+  - [x] **Sincronização Dinâmica da Fatura Consolidada no Extrato de Lançamentos**:
+    - [x] Criação e atualização automática da transação `Fatura [Nome do Cartão] - MM/AAAA` no extrato de lançamentos com data de vencimento calculada da fatura e status `PENDENTE`.
+    - [x] Ajuste automático do valor em tempo real conforme novas compras são inseridas, parceladas, editadas ou excluídas no cartão.
+    - [x] Baixa e reabertura bidirecional: liquidar ou reabrir a fatura atualiza instantaneamente o status do lançamento consolidado para `CONCLUIDO` ou `PENDENTE` e propaga o status para os lançamentos individuais do cartão.
+    - [x] Exibição de badge destacado `Fatura de Cartão` com ícone roxo na tabela de lançamentos.
+  - [x] **Deduplicação de Métricas no Dashboard**: Despesas e orçamentos do dashboard ajustados com `is_invoice_payment == 0` para evitar contagem duplicada entre compras avulsas e o débito consolidado da fatura.
+  - [x] **Nova Tela Dedicada "Cartões & Faturas" ([CreditCards.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/pages/CreditCards.tsx))**:
+    - [x] Faixa de KPIs globais (Limite Disponível Total, Limite Comprometido, Faturas Abertas no Ciclo e Total de Cartões).
+    - [x] Carrossel / Grid de cartões de crédito virtuais com degradês configuráveis por cor, melhor dia de compra, limite total, limite disponível e barra de comprometimento.
+    - [x] Navegador de faturas mês a mês com status (`ABERTA`, `FECHADA`, `PAGA`), datas de fechamento e vencimento.
+    - [x] Ações de fatura: Liquidação/Pagamento com escolha de conta bancária, Reabertura/Estorno atômico em 1 clique, Adição rápida de compra e Exportação para CSV.
+    - [x] Tabela de compras da fatura com busca em tempo real, filtro por categoria, parcelas (`1/N`), visualizador de anexos/comprovantes integrados e edição/exclusão direta.
+    - [x] Painel de distribuição percentual de gastos por categoria na fatura ativa.
+  - [x] Modal de transação atualizado com dica explicativa de melhor dia de compra e atalho para o módulo de cartões.
+  - [x] Registrado no [ADR 015](file:///home/jsilvaneto/projetos/wallet/.ai/DECISIONS/015-refatoracao-modulo-cartoes-e-faturas.md).
+
 - [x] **Ambiente WSL & Scripts**:
   - [x] Script [start.sh](file:///home/jsilvaneto/projetos/wallet/start.sh) automatizado para validação de ambiente e execução paralela com encerramento limpo.
 
