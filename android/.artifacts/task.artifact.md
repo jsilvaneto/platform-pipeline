@@ -1,0 +1,4 @@
+- [ ] Configuring JDK and Build Tools in `gradle.properties`
+- [ ] Updating Kotlin and KSP versions in `libs.versions.toml`
+- [ ] Fixing syntax errors and migrating `kotlinOptions` in `app/build.gradle.kts`
+- [ ] Verifying the fix with a Gradle sync/build
