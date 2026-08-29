@@ -209,11 +209,16 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
 - [x] **Refatoração do Módulo de Cartões de Crédito e Ciclo de Faturas**:
   - [x] **Isolamento Completo do Extrato de Lançamentos**: Endpoint `GET /api/v1/transactions` limpo por padrão, retornando apenas movimentações de contas bancárias e a despesa consolidada de faturas (`is_invoice_payment == 1`), com parâmetro `include_card_expenses` opcional.
   - [x] **Sincronização Dinâmica da Fatura Consolidada no Extrato de Lançamentos**:
-    - [x] Criação e atualização automática da transação `Fatura [Nome do Cartão] - MM/AAAA` no extrato de lançamentos com data de vencimento calculada da fatura e status `PENDENTE`.
+    - [x] Criação e atualização automática da transação `Fatura [Nome do Cartão] - MM/AAAA` no extrato de lançamentos com data de vencimento calculada da fatura e status estrito `PENDENTE` enquanto houver compras em aberto.
     - [x] Ajuste automático do valor em tempo real conforme novas compras são inseridas, parceladas, editadas ou excluídas no cartão.
     - [x] Baixa e reabertura bidirecional: liquidar ou reabrir a fatura atualiza instantaneamente o status do lançamento consolidado para `CONCLUIDO` ou `PENDENTE` e propaga o status para os lançamentos individuais do cartão.
     - [x] Exibição de badge destacado `Fatura de Cartão` com ícone roxo na tabela de lançamentos.
-  - [x] **Deduplicação de Métricas no Dashboard**: Despesas e orçamentos do dashboard ajustados com `is_invoice_payment == 0` para evitar contagem duplicada entre compras avulsas e o débito consolidado da fatura.
+  - [x] **Correções de Robustez nos Botões de "Novo Lançamento" & Modais**:
+    - [x] Correção de import de modelo `Category` e `Account` no backend em `transactions.py`.
+    - [x] Sanitização automática de strings vazias (`""` para `None`) em chaves estrangeiras (`account_id`, `category_id`, `contact_id`, etc.) em `transactions.py` e `schedule_service.py`, prevenindo erros de SQLite Foreign Key.
+    - [x] Remoção da duplicidade de instância de `TransactionModal` na página de Lançamentos.
+    - [x] Desacoplamento do ciclo de dependências de `TransactionModal.tsx` para não limpar os campos preenchidos ao alternar o tipo da transação.
+  - [x] **Deduplicação de Métricas no Dashboard**: Despesas, orçamentos, faturas abertas (`total_card_invoices`), patrimônio líquido (`net_worth`), alertas e timeline do dashboard ajustados com `is_invoice_payment == 0` para evitar contagem duplicada entre compras avulsas e o débito consolidado da fatura.
   - [x] **Nova Tela Dedicada "Cartões & Faturas" ([CreditCards.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/pages/CreditCards.tsx))**:
     - [x] Faixa de KPIs globais (Limite Disponível Total, Limite Comprometido, Faturas Abertas no Ciclo e Total de Cartões).
     - [x] Carrossel / Grid de cartões de crédito virtuais com degradês configuráveis por cor, melhor dia de compra, limite total, limite disponível e barra de comprometimento.

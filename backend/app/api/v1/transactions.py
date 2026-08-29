@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
 from app.database import get_db
-from app.models import Transaction, Debt, User, Attachment, CreditCard
+from app.models import Transaction, Debt, User, Attachment, CreditCard, Category, Account
 from app.schemas.transaction import (
     TransactionCreate, TransactionUpdate, TransactionResponse,
     TransactionBatchAction, TransactionBatchComplete, TransactionBatchUpdate, TransactionBatchResponse
@@ -116,6 +116,10 @@ async def create_transaction(
 ):
     trans_data = trans_in.model_dump()
     attachment_ids = trans_data.pop("attachment_ids", None)
+
+    for fk in ["account_id", "destination_account_id", "credit_card_id", "category_id", "item_id", "contact_id", "debt_id", "payment_method_id", "notes", "payment_date"]:
+        if fk in trans_data and trans_data[fk] == "":
+            trans_data[fk] = None
 
     # Validações para Transferência Interna
     if trans_data.get("type") == "TRANSFERENCIA":
@@ -352,6 +356,10 @@ async def update_transaction(
 
     update_data = trans_in.model_dump(exclude_unset=True)
     attachment_ids = update_data.pop("attachment_ids", None)
+
+    for fk in ["account_id", "destination_account_id", "credit_card_id", "category_id", "item_id", "contact_id", "debt_id", "payment_method_id", "notes", "payment_date"]:
+        if fk in update_data and update_data[fk] == "":
+            update_data[fk] = None
 
     # Validação de Transferência
     target_type = update_data.get("type", trans.type)

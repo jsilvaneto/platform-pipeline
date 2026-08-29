@@ -575,6 +575,7 @@ export const ContactStatementModal: React.FC<ContactStatementModalProps> = ({
           }}
           onSuccess={handleTransactionSuccess}
           transactionToEdit={transactionToEdit}
+          initialContactId={statement?.contact?.id}
         />
       )}
 

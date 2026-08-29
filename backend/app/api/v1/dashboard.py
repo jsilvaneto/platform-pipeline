@@ -79,6 +79,7 @@ async def get_dashboard_summary(
         Transaction.profile == profile,
         Transaction.type == "DESPESA",
         Transaction.status == "PENDENTE",
+        Transaction.is_invoice_payment == 0,
         Transaction.due_date < today_str
     )
     overdue_count, overdue_amount = (await db.execute(overdue_query)).one()
@@ -91,6 +92,7 @@ async def get_dashboard_summary(
         Transaction.profile == profile,
         Transaction.type == "DESPESA",
         Transaction.status == "PENDENTE",
+        Transaction.is_invoice_payment == 0,
         Transaction.due_date == today_str
     )
     due_today_count, due_today_amount = (await db.execute(due_today_query)).one()
@@ -136,7 +138,8 @@ async def get_dashboard_summary(
     card_inv_query = select(func.coalesce(func.sum(Transaction.amount_cents), 0)).where(
         Transaction.profile == profile,
         Transaction.credit_card_id.isnot(None),
-        Transaction.status == "PENDENTE"
+        Transaction.status == "PENDENTE",
+        Transaction.is_invoice_payment == 0
     )
     total_card_invoices = (await db.execute(card_inv_query)).scalar() or 0
 
@@ -326,6 +329,7 @@ async def get_dashboard_summary(
         .where(
             Transaction.profile == profile,
             Transaction.status == "PENDENTE",
+            Transaction.is_invoice_payment == 0,
             Transaction.due_date >= today_str,
             Transaction.due_date <= end_7_days
         )

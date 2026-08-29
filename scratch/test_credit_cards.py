@@ -186,14 +186,14 @@ async def run_tests():
             assert t.is_invoice_payment == 1, f"Lançamento {t.description} retornado com is_invoice_payment != 1 ao filtrar por cartão"
         print(f"✓ Filtro de cartão em Lançamentos retornou apenas as faturas consolidadas ({len(card_filtered_default)} faturas), sem duplicatas!")
 
-        # Cleanup
-        await db.delete(new_card_purchase)
-        await db.delete(card)
-        await db.delete(acc)
+        # Cleanup Completo
+        await db.execute(delete(Transaction).where(Transaction.credit_card_id == card.id))
         await db.execute(delete(Transaction).where(Transaction.schedule_id == sched.id))
         await db.delete(sched)
+        await db.delete(card)
+        await db.delete(acc)
         await db.commit()
-        print("✓ Limpeza de dados de teste concluída.")
+        print("✓ Limpeza de dados de teste concluída 100% sem sobras no banco.")
 
     print("\n✓ TODOS OS TESTES BACKEND DE CARTÕES DE CRÉDITO E FATURAS PASSARAM COM 100% DE SUCESSO!")
 

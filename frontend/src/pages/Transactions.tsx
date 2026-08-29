@@ -1323,20 +1323,6 @@ export const Transactions: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Lançamentos */}
-      <TransactionModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingTransaction(null);
-        }}
-        onSuccess={() => {
-          fetchData();
-          refreshSyncStatus(false);
-        }}
-        transactionToEdit={editingTransaction}
-      />
-
       {/* Modal de Edição em Lote */}
       <BatchEditModal
         isOpen={isBatchEditOpen}

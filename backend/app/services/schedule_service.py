@@ -32,6 +32,9 @@ def calculate_next_date(base_date: date, frequency: str, step: int, fixed_day: i
 async def create_schedule_with_transactions(db: AsyncSession, schedule_in: ScheduleCreate) -> Schedule:
     # 1. Cria o registro mestre do plano
     schedule_data = schedule_in.model_dump()
+    for fk in ["account_id", "credit_card_id", "item_id", "contact_id", "debt_id", "payment_method_id"]:
+        if fk in schedule_data and schedule_data[fk] == "":
+            schedule_data[fk] = None
     new_schedule = Schedule(**schedule_data)
     db.add(new_schedule)
     await db.flush() # Obtém o ID do schedule
@@ -84,22 +87,22 @@ async def create_schedule_with_transactions(db: AsyncSession, schedule_in: Sched
             desc = f"{schedule_in.description} ({inst_number}/{total_inst})"
 
         trans = Transaction(
-            profile=schedule_in.profile,
-            type=schedule_in.type,
-            account_id=schedule_in.account_id,
-            credit_card_id=schedule_in.credit_card_id,
-            category_id=schedule_in.category_id,
-            item_id=schedule_in.item_id,
-            contact_id=schedule_in.contact_id,
-            debt_id=schedule_in.debt_id,
-            payment_method_id=schedule_in.payment_method_id,
+            profile=new_schedule.profile,
+            type=new_schedule.type,
+            account_id=new_schedule.account_id,
+            credit_card_id=new_schedule.credit_card_id,
+            category_id=new_schedule.category_id,
+            item_id=new_schedule.item_id,
+            contact_id=new_schedule.contact_id,
+            debt_id=new_schedule.debt_id,
+            payment_method_id=new_schedule.payment_method_id,
             schedule_id=new_schedule.id,
             invoice_month=inv_month,
             invoice_year=inv_year,
             installment_number=inst_number,
             total_installments=total_inst,
             description=desc,
-            amount_cents=schedule_in.amount_cents,
+            amount_cents=new_schedule.amount_cents,
             due_date=due_iso,
             status="PENDENTE",
             sync_status="PENDENTE"

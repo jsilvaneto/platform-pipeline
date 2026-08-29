@@ -16,6 +16,7 @@ interface TransactionModalProps {
   onSuccess: () => void;
   transactionToEdit?: Transaction | null;
   initialCreditCardId?: string;
+  initialContactId?: string;
   initialType?: TransactionType;
   initialMode?: Mode;
 }
@@ -28,6 +29,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onSuccess,
   transactionToEdit,
   initialCreditCardId,
+  initialContactId,
   initialType,
   initialMode
 }) => {
@@ -38,8 +40,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const paymentDatePickerRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<Mode>(initialMode || "UNICO");
-  const [type, setType] = useState<TransactionType>(initialType || "DESPESA");
+  const [mode, setMode] = useState<Mode>("UNICO");
+  const [type, setType] = useState<TransactionType>("DESPESA");
   const [status, setStatus] = useState<"PENDENTE" | "CONCLUIDO">("PENDENTE");
   const [itemId, setItemId] = useState("");
   const [description, setDescription] = useState("");
@@ -48,7 +50,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [accountId, setAccountId] = useState("");
   const [destinationAccountId, setDestinationAccountId] = useState("");
   const [paymentMethodId, setPaymentMethodId] = useState("");
-  const [creditCardId, setCreditCardId] = useState(initialCreditCardId || "");
+  const [creditCardId, setCreditCardId] = useState("");
   const [contactId, setContactId] = useState("");
   const [dueDateStr, setDueDateStr] = useState<string>(getTodayBR());
   const [paymentDateStr, setPaymentDateStr] = useState<string>("");
@@ -83,46 +85,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
-  // Carrega dados e dependências ao abrir o modal
+  // Inicialização de campos ao abrir ou mudar a transação em edição
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
     setCardHint(null);
-
-    const loadDependencies = async () => {
-      try {
-        const catParams = type === "TRANSFERENCIA" ? { profile } : { profile, type };
-        const itemParams = type === "TRANSFERENCIA" ? { profile } : { profile, type };
-        const [catRes, conRes, itemRes, accRes, pmRes, cardsRes] = await Promise.all([
-          api.get("/categories", { params: catParams }),
-          api.get("/contacts", { params: { profile } }),
-          api.get("/items", { params: itemParams }),
-          api.get("/accounts", { params: { profile } }),
-          api.get("/payment-methods", { params: { profile } }),
-          api.get("/credit-cards", { params: { profile } }),
-        ]);
-        setCategories(catRes.data);
-        setContacts(conRes.data);
-        setItems(itemRes.data);
-        setAccounts(accRes.data);
-        setPaymentMethods(pmRes.data);
-        setCreditCards(cardsRes.data);
-
-        // Se estiver criando, define a primeira categoria se houver
-        if (!transactionToEdit) {
-          if (catRes.data.length > 0 && !categoryId) {
-            setCategoryId(catRes.data[0].id);
-          }
-          if (initialCreditCardId) {
-            setCreditCardId(initialCreditCardId);
-          }
-        }
-      } catch (err) {
-        console.error("Erro ao carregar dependências:", err);
-      }
-    };
-
-    loadDependencies();
 
     if (transactionToEdit) {
       // Modo Edição: Pré-carrega todos os campos do lançamento existente
@@ -148,19 +115,76 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setPaymentDateStr("");
       setStatus("PENDENTE");
       setMode(initialMode || "UNICO");
-      if (initialType) setType(initialType);
+      setType(initialType || "DESPESA");
       setDescription("");
       setAmountStr("");
       setItemId("");
+      setCategoryId("");
       setAccountId("");
       setDestinationAccountId("");
       setPaymentMethodId("");
       setCreditCardId(initialCreditCardId || "");
-      setContactId("");
+      setContactId(initialContactId || "");
       setNotes("");
       setUploadedAttachments([]);
     }
-  }, [isOpen, profile, type, transactionToEdit, initialCreditCardId, initialType, initialMode]);
+  }, [isOpen, transactionToEdit, initialCreditCardId, initialContactId, initialType, initialMode]);
+
+  // Carrega listas gerais (contatos, contas, formas de pagamento, cartões)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadGeneralDependencies = async () => {
+      try {
+        const [conRes, accRes, pmRes, cardsRes] = await Promise.all([
+          api.get("/contacts", { params: { profile } }),
+          api.get("/accounts", { params: { profile } }),
+          api.get("/payment-methods", { params: { profile } }),
+          api.get("/credit-cards", { params: { profile } }),
+        ]);
+        setContacts(conRes.data);
+        setAccounts(accRes.data);
+        setPaymentMethods(pmRes.data);
+        setCreditCards(cardsRes.data);
+      } catch (err) {
+        console.error("Erro ao carregar listas gerais:", err);
+      }
+    };
+
+    loadGeneralDependencies();
+  }, [isOpen, profile]);
+
+  // Carrega categorias e itens filtrados pelo tipo selecionado
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadTypeFilteredDependencies = async () => {
+      try {
+        const catParams = type === "TRANSFERENCIA" ? { profile } : { profile, type };
+        const itemParams = type === "TRANSFERENCIA" ? { profile } : { profile, type };
+        const [catRes, itemRes] = await Promise.all([
+          api.get("/categories", { params: catParams }),
+          api.get("/items", { params: itemParams }),
+        ]);
+        setCategories(catRes.data);
+        setItems(itemRes.data);
+
+        // Se estiver criando e não tiver categoria selecionada, define a primeira categoria
+        if (!transactionToEdit && catRes.data.length > 0) {
+          setCategoryId((prev) => {
+            if (!prev || !catRes.data.some((c: Category) => c.id === prev)) {
+              return catRes.data[0].id;
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao carregar categorias e itens:", err);
+      }
+    };
+
+    loadTypeFilteredDependencies();
+  }, [isOpen, profile, type, transactionToEdit]);
 
   if (!isOpen) return null;
 
@@ -304,7 +328,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       return;
     }
 
-    if (!categoryId) {
+    if (!categoryId && type !== "TRANSFERENCIA") {
       setError("Selecione ou crie uma categoria antes de prosseguir.");
       setLoading(false);
       return;
@@ -341,19 +365,19 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         // Modo Edição: Executa PUT
         await api.put(`/transactions/${transactionToEdit.id}`, {
           type,
-          description,
+          description: description.trim(),
           amount_cents: amountCents,
-          category_id: type === "TRANSFERENCIA" ? null : categoryId,
+          category_id: type === "TRANSFERENCIA" ? null : (categoryId || null),
           item_id: type === "TRANSFERENCIA" ? null : (itemId || null),
           account_id: accountId || null,
-          destination_account_id: type === "TRANSFERENCIA" ? destinationAccountId : null,
+          destination_account_id: type === "TRANSFERENCIA" ? (destinationAccountId || null) : null,
           payment_method_id: paymentMethodId || null,
           credit_card_id: type === "TRANSFERENCIA" ? null : (creditCardId || null),
           contact_id: type === "TRANSFERENCIA" ? null : (contactId || null),
           due_date: isoDueDate,
           status,
           payment_date: isoPaymentDate,
-          notes: notes || null,
+          notes: notes.trim() || null,
           attachment_ids: uploadedAttachments.map((a) => a.id),
         });
       } else {
@@ -362,17 +386,17 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           await api.post("/transactions", {
             profile,
             type,
-            description,
+            description: description.trim(),
             amount_cents: amountCents,
-            category_id: type === "TRANSFERENCIA" ? null : categoryId,
+            category_id: type === "TRANSFERENCIA" ? null : (categoryId || null),
             item_id: type === "TRANSFERENCIA" ? null : (itemId || null),
             account_id: accountId || null,
-            destination_account_id: type === "TRANSFERENCIA" ? destinationAccountId : null,
+            destination_account_id: type === "TRANSFERENCIA" ? (destinationAccountId || null) : null,
             payment_method_id: paymentMethodId || null,
             credit_card_id: type === "TRANSFERENCIA" ? null : (creditCardId || null),
             contact_id: type === "TRANSFERENCIA" ? null : (contactId || null),
             due_date: isoDueDate,
-            notes: notes || null,
+            notes: notes.trim() || null,
             status,
             payment_date: isoPaymentDate,
             attachment_ids: uploadedAttachments.map((a) => a.id),
@@ -381,7 +405,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           await api.post("/schedules", {
             profile,
             type,
-            description,
+            description: description.trim(),
             amount_cents: amountCents,
             category_id: categoryId,
             item_id: itemId || null,
@@ -391,9 +415,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             contact_id: contactId || null,
             schedule_type: mode === "PARCELADO" ? "PARCELADA" : "RECORRENTE_CONTINUA",
             frequency: "MENSAL",
-            total_installments: mode === "PARCELADO" ? parseInt(installments, 10) : null,
+            total_installments: mode === "PARCELADO" ? (parseInt(installments, 10) || 2) : null,
             start_date: isoDueDate,
-            due_day: parseInt(dueDay, 10),
+            due_day: parseInt(dueDay, 10) || new Date().getDate(),
           });
         }
       }

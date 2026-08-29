@@ -419,8 +419,8 @@ async def sync_card_invoice_transaction(
         existing_inv.invoice_year = invoice_year
         existing_inv.invoice_month = invoice_month
         existing_inv.credit_card_id = card.id
-        if existing_inv.status != "CONCLUIDO":
-            existing_inv.status = "PENDENTE"
+        existing_inv.status = "PENDENTE"
+        existing_inv.payment_date = None
         if not existing_inv.account_id and card.account_id:
             existing_inv.account_id = card.account_id
         existing_inv.sync_status = "PENDENTE"
