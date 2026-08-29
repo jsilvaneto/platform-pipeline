@@ -44,4 +44,7 @@ object DatabaseModule {
 
     @Provides
     fun provideGoalDao(db: WalletDatabase): GoalDao = db.goalDao()
+
+    @Provides
+    fun provideItemDao(db: WalletDatabase): ItemDao = db.itemDao()
 }
