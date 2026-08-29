@@ -47,13 +47,38 @@ cd "$PROJECT_ROOT/frontend"
 npm run dev -- --host &
 FRONTEND_PID=$!
 
+# 6. Detecção do IP real do Computador (Windows Host / Wi-Fi) e WSL
+WINDOWS_LAN_IP=""
+if command -v ipconfig.exe >/dev/null 2>&1; then
+    WINDOWS_LAN_IP=$(timeout 1.5 ipconfig.exe < /dev/null 2>/dev/null | grep -i "IPv4" | grep -v "172." | grep -v "169.254." | grep -v "192.168.56." | awk -F: '{print $2}' | tr -d ' \r' | head -n 1)
+fi
+WSL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+
 echo ""
-echo "========================================"
-echo "  Wallet em execução:"
-echo "  ➜ Frontend: http://localhost:5173"
-echo "  ➜ Backend Docs: http://localhost:8000/docs"
-echo "  Pressione Ctrl + C para encerrar."
-echo "========================================"
+echo "================================================================="
+echo "  🚀 WALLET EM EXECUÇÃO (BACKEND + FRONTEND WEB)"
+echo "================================================================="
+echo "  💻 Localhost (Navegador no Windows):"
+echo "     ➜ Web App:          http://localhost:5173"
+echo "     ➜ Backend Swagger:  http://localhost:8000/docs"
+echo ""
+if [ -n "$WINDOWS_LAN_IP" ]; then
+echo "  📱 Rede Local / Wi-Fi (Celular & Dispositivo Android Físico):"
+echo "     ➜ IP do Computador: $WINDOWS_LAN_IP"
+echo "     ➜ Backend URL:      http://${WINDOWS_LAN_IP}:8000"
+echo "     ➜ Web App na Rede:  http://${WINDOWS_LAN_IP}:5173"
+echo ""
+fi
+echo "  🤖 Emulador Android Studio:"
+echo "     ➜ Backend URL:      http://10.0.2.2:8000"
+echo ""
+if [ -n "$WSL_IP" ]; then
+echo "  🐧 WSL Virtual IP (eth0):"
+echo "     ➜ IP interno:       ${WSL_IP}"
+echo ""
+fi
+echo "  Pressione Ctrl + C para encerrar os serviços."
+echo "================================================================="
 echo ""
 
 # Mantém o script aguardando os processos
