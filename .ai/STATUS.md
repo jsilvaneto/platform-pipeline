@@ -262,6 +262,7 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
   - [x] `.gitignore` da raiz atualizado com regras de compilação Gradle e Android Studio.
   - [x] Registrado no [ADR 016](file:///home/jsilvaneto/projetos/wallet/.ai/DECISIONS/016-estrutura-monorepo-modulo-android-nativo.md).
 - [x] **Correção de Ambiente de Build WSL**: Resolvido erro `java.io.IOException: Incorrect function` ao compilar no Windows/WSL desativando Gradle Daemon, VFS Watch e Caching no `gradle.properties`.
+- [x] **Correção de Erro KSP**: Reconstruída camada de dados (`data/local` e `data/remote`) que estava ausente, resolvendo erros de `NonExistentClass` no processamento do Hilt.
 - [ ] **Evoluções Futuras do App Mobile**:
   - [ ] Telas de Cartões de Crédito e Faturas no Compose.
   - [ ] Integração com `CameraX` para captura em tempo real de notas fiscais.
