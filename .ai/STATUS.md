@@ -252,9 +252,10 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
 
 - [x] **Estrutura Monorepo & Módulo Nativo Android ([wallet/android/](file:///home/jsilvaneto/projetos/wallet/android/))**:
   - [x] Estrutura monorepo modular: `backend/`, `frontend/`, `android/` e `.ai/`.
-  - [x] Arquivos de build Gradle configurados (`settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `app/build.gradle.kts`).
+  - [x] Arquivos de build Gradle configurados e modernizados com **Version Catalog**.
   - [x] Manifest configurado com permissões de Internet, Câmera e Biometria (`AndroidManifest.xml`).
-  - [x] Entidade Room `TransactionEntity` e DAO `TransactionDao` com valores em centavos (`amountCents: Long`) e suporte a `Flow`.
+  - [x] Entidades Room completas (`Transaction`, `Category`, `Account`, `PaymentMethod`, `CreditCard`, `Goal`) e DAOs reativos.
+  - [x] Injeção de Dependência configurada com **Hilt**.
   - [x] Contratos Retrofit `WalletApiService` com Kotlinx Serialization para push/pull.
   - [x] Design System Jetpack Compose Material 3 com suporte a Dark/Light Theme (`Theme.kt`, `Color.kt`, `Type.kt`).
   - [x] Telas iniciais em Compose: `HomeScreen.kt` (Dashboard e listagem reativa) e `QuickEntryScreen.kt` (Entrada rápida e gravação offline).

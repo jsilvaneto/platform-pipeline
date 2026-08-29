@@ -12,19 +12,25 @@ import com.wallet.app.ui.screens.QuickEntryScreen
 import com.wallet.app.ui.theme.WalletTheme
 import kotlinx.coroutines.launch
 
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import com.wallet.app.data.local.dao.TransactionDao
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var transactionDao: TransactionDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val dao = (application as WalletApplication).database.transactionDao()
 
         setContent {
             WalletTheme {
                 var currentScreen by remember { mutableStateOf("HOME") }
                 var activeProfile by remember { mutableStateOf("PESSOAL") }
 
-                val transactions by dao.getTransactionsByProfileFlow(activeProfile)
+                val transactions by transactionDao.getTransactionsByProfileFlow(activeProfile)
                     .collectAsState(initial = emptyList())
 
                 if (currentScreen == "HOME") {
@@ -43,7 +49,7 @@ class MainActivity : ComponentActivity() {
                         onBack = { currentScreen = "HOME" },
                         onSave = { newTrans ->
                             lifecycleScope.launch {
-                                dao.insertOrReplace(newTrans)
+                                transactionDao.insertOrReplace(newTrans)
                                 Toast.makeText(this@MainActivity, "Salvo offline no aparelho!", Toast.LENGTH_SHORT).show()
                                 currentScreen = "HOME"
                             }
