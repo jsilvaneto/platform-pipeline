@@ -56,7 +56,9 @@ Ao concluir qualquer tarefa ou entrega de funcionalidade:
 
 | Ação | Comando | Descrição |
 | :--- | :--- | :--- |
-| **Inicialização Completa** | `./start.sh` | Inicia Backend (porta 8000) e Frontend (porta 5173) no WSL com encerramento limpo. |
+| **Inicialização Completa (WSL)** | `./start.sh` | Inicia Backend (porta 8000) e Frontend (porta 5173) no WSL com encerramento limpo. |
+| **Inicialização Docker (Prod)** | `docker compose up -d --build` | Constrói e inicializa os containers do Backend e Nginx Frontend em segundo plano. |
+| **Inicialização Docker (Dev)** | `docker compose -f docker-compose.dev.yml up` | Inicia containers em modo desenvolvimento com hot-reload ativo. |
 | **Build do Frontend** | `cd frontend && npm run build` | Valida tipagem TypeScript e gera bundle de produção via Vite. |
 | **Build do Android** | `cd android && ./gradlew assembleDebug` | Compila o aplicativo mobile Android e valida o projeto no Gradle. |
 | **Execução de Testes** | `./backend/venv/bin/python <script_de_teste>.py` | Executa rotinas de validação de API e banco de dados. |

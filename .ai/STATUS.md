@@ -229,8 +229,22 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
   - [x] Modal de transação atualizado com dica explicativa de melhor dia de compra e atalho para o módulo de cartões.
   - [x] Registrado no [ADR 015](file:///home/jsilvaneto/projetos/wallet/.ai/DECISIONS/015-refatoracao-modulo-cartoes-e-faturas.md).
 
+- [x] **Containerização Completa com Docker & Docker Compose**:
+  - [x] `backend/Dockerfile` otimizado em Python 3.10-slim com healthcheck.
+  - [x] `frontend/Dockerfile` multi-stage com `node:20-alpine` e `nginx:1.27-alpine`.
+  - [x] `frontend/nginx.conf` configurado com SPA routing, Gzip e proxy reverso `/api/` para o FastAPI.
+  - [x] `docker-compose.yml` (produção) e `docker-compose.dev.yml` (desenvolvimento com hot-reload).
+  - [x] Volume persistente `wallet_data` para isolamento e segurança do SQLite e anexos.
+  - [x] Registrado no [ADR 017](file:///home/jsilvaneto/projetos/wallet/.ai/DECISIONS/017-containerizacao-docker-e-estrategia-de-releases.md).
+
+- [x] **Versionamento Semântico e Governança de Releases**:
+  - [x] Arquivo mestre [VERSION](file:///home/jsilvaneto/projetos/wallet/VERSION) (`1.0.0`).
+  - [x] Histórico de mudanças padronizado no [CHANGELOG.md](file:///home/jsilvaneto/projetos/wallet/CHANGELOG.md) (*Keep a Changelog*).
+  - [x] Release note detalhada da versão [v1.0.0.md](file:///home/jsilvaneto/projetos/wallet/.ai/RELEASES/v1.0.0.md).
+
 - [x] **Ambiente WSL & Scripts**:
-  - [x] Script [start.sh](file:///home/jsilvaneto/projetos/wallet/start.sh) automatizado para validação de ambiente e execução paralela com encerramento limpo.
+  - [x] Script [start.sh](file:///home/jsilvaneto/projetos/wallet/start.sh) automatizado para validação de ambiente e execução paralela com detecção dinâmica do IP do Windows.
+  - [x] Script [liberar_acesso_celular.bat](file:///home/jsilvaneto/projetos/wallet/liberar_acesso_celular.bat) e configuração do modo de rede espelhado (`.wslconfig`).
 
 ---
 

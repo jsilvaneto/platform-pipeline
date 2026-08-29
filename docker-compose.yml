@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wallet_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - wallet_data:/app/data
+    environment:
+      - SECRET_KEY=wallet_super_secret_local_key_2026_change_if_needed
+      - ACCESS_TOKEN_EXPIRE_MINUTES=43200
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - wallet_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: wallet_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - wallet_network
+
+volumes:
+  wallet_data:
+    name: wallet_data
+
+networks:
+  wallet_network:
+    name: wallet_network
+    driver: bridge

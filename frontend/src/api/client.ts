@@ -1,9 +1,17 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000/api/v1";
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== "undefined" && window.location.port === "5173") {
+    return `http://${window.location.hostname}:8000/api/v1`;
+  }
+  return "/api/v1";
+};
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {
