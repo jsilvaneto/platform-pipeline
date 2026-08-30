@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wallet.app.data.local.entity.TransactionEntity
+import com.wallet.app.ui.components.TransactionForm
 import com.wallet.app.ui.theme.EmeraldPrimary
 import com.wallet.app.ui.theme.RoseExpense
 import com.wallet.app.ui.utils.FormatUtils
@@ -25,12 +26,22 @@ import com.wallet.app.ui.utils.FormatUtils
 @Composable
 fun TransactionsScreen(
     viewModel: TransactionsViewModel = hiltViewModel(),
+    formViewModel: TransactionFormViewModel = hiltViewModel(),
     activeProfile: String
 ) {
     val transactions by viewModel.transactions.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val categories by formViewModel.categories.collectAsState()
+    val accounts by formViewModel.accounts.collectAsState()
+    val paymentMethods by formViewModel.paymentMethods.collectAsState()
+    val creditCards by formViewModel.creditCards.collectAsState()
+    val contacts by formViewModel.contacts.collectAsState()
+
+    var showForm by remember { mutableStateOf(false) }
 
     LaunchedEffect(activeProfile) {
         viewModel.setProfile(activeProfile)
+        formViewModel.setProfile(activeProfile)
     }
 
     Scaffold(
@@ -46,7 +57,7 @@ fun TransactionsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: New Transaction */ },
+                onClick = { showForm = true },
                 containerColor = EmeraldPrimary,
                 contentColor = Color.White
             ) {
@@ -54,9 +65,37 @@ fun TransactionsScreen(
             }
         }
     ) { paddingValues ->
+        if (showForm) {
+            ModalBottomSheet(
+                onDismissRequest = { showForm = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ) {
+                TransactionForm(
+                    profile = activeProfile,
+                    categories = categories,
+                    accounts = accounts,
+                    paymentMethods = paymentMethods,
+                    creditCards = creditCards,
+                    contacts = contacts,
+                    onSave = { 
+                        formViewModel.saveTransaction(it)
+                        showForm = false
+                    },
+                    onCancel = { showForm = false }
+                )
+            }
+        }
+
         Column(modifier = Modifier.padding(paddingValues)) {
-            // Quick Search / Period
-            // For now just the list
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.setSearchQuery(it) },
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                placeholder = { Text("Buscar lançamentos...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                shape = RoundedCornerShape(12.dp)
+            )
+
             if (transactions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Nenhum lançamento encontrado", color = Color.Gray)

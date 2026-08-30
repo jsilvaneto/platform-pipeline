@@ -8,7 +8,7 @@ object FormatUtils {
     private val brLocale = Locale("pt", "BR")
     private val currencyFormat = NumberFormat.getCurrencyInstance(brLocale)
     private val isoDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    private val brDateFormat = SimpleDateFormat("dd/mm/yyyy", brLocale)
+    private val brDateFormat = SimpleDateFormat("dd/MM/yyyy", brLocale)
 
     fun formatCurrency(amountCents: Long): String {
         return currencyFormat.format(amountCents / 100.0)

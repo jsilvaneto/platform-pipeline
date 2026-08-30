@@ -2,6 +2,7 @@ package com.wallet.app.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -156,7 +157,8 @@ fun TransactionForm(
 
         Button(
             onClick = {
-                val amountCents = (amountStr.replace(",", ".").toDoubleOrNull() ?: 0.0 * 100).toLong()
+                val amountDouble = amountStr.replace(",", ".").toDoubleOrNull() ?: 0.0
+                val amountCents = (amountDouble * 100).toLong()
                 val transaction = TransactionEntity(
                     id = UUID.randomUUID().toString(),
                     profile = profile,

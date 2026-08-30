@@ -1,8 +1,7 @@
 package com.wallet.app.domain.service
 
-import com.wallet.app.data.local.entity.CreditCardEntity
 import com.wallet.app.data.local.entity.TransactionEntity
-import java.util.Calendar
+import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,7 +50,7 @@ class CreditCardService @Inject constructor() {
         val maxDay = dueCal.getActualMaximum(Calendar.DAY_OF_MONTH)
         val finalDueDay = dueDay.coerceAtMost(maxDay)
         
-        val dueDateStr = String.format("%04d-%02d-%02d", dueYear, dueMonth, finalDueDay)
+        val dueDateStr = String.format(Locale.US, "%04d-%02d-%02d", dueYear, dueMonth, finalDueDay)
 
         return InvoiceDateInfo(month, year, dueDateStr)
     }

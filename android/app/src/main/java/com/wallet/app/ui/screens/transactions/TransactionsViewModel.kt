@@ -17,11 +17,21 @@ class TransactionsViewModel @Inject constructor(
     private val _activeProfile = MutableStateFlow("PESSOAL")
     val activeProfile: StateFlow<String> = _activeProfile.asStateFlow()
 
-    val transactions: StateFlow<List<TransactionEntity>> = _activeProfile
-        .flatMapLatest { profile ->
-            transactionRepository.getTransactionsByProfileFlow(profile)
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    val transactions: StateFlow<List<TransactionEntity>> = combine(_activeProfile, _searchQuery) { profile, query ->
+        profile to query
+    }.flatMapLatest { (profile, query) ->
+        transactionRepository.getTransactionsByProfileFlow(profile).map { list ->
+            if (query.isBlank()) list
+            else list.filter { it.description.contains(query, ignoreCase = true) || (it.categoryName ?: "").contains(query, ignoreCase = true) }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
 
     fun setProfile(profile: String) {
         _activeProfile.value = profile
