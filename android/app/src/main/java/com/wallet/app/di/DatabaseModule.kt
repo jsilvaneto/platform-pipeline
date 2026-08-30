@@ -44,4 +44,19 @@ object DatabaseModule {
 
     @Provides
     fun provideGoalDao(db: WalletDatabase): GoalDao = db.goalDao()
+
+    @Provides
+    fun provideItemDao(db: WalletDatabase): ItemDao = db.itemDao()
+
+    @Provides
+    fun provideContactDao(db: WalletDatabase): ContactDao = db.contactDao()
+
+    @Provides
+    fun provideScheduleDao(db: WalletDatabase): ScheduleDao = db.scheduleDao()
+
+    @Provides
+    fun provideAttachmentDao(db: WalletDatabase): AttachmentDao = db.attachmentDao()
+
+    @Provides
+    fun provideBudgetDao(db: WalletDatabase): BudgetDao = db.budgetDao()
 }
