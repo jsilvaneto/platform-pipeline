@@ -264,9 +264,10 @@ Este documento registra o progresso consolidado de desenvolvimento do **Wallet**
 - [x] **Correção de Ambiente de Build WSL**: Resolvido erro `java.io.IOException: Incorrect function` ao compilar no Windows/WSL desativando Gradle Daemon, VFS Watch e Caching no `gradle.properties`.
 - [x] **Correção de Erro KSP**: Reconstruída camada de dados (`data/local` e `data/remote`) que estava ausente, resolvendo erros de `NonExistentClass` no processamento do Hilt.
 - [x] **Sprint 1 (Mobile)**: Implementada infraestrutura de navegação (Bottom Bar), novas entidades Room (Contact, Schedule, Attachment, Budget), repositórios base e suporte ao WorkManager para sincronização.
+- [x] **Sprint 2 (Mobile)**: Implementadas telas de Lançamentos (com busca e formulário completo), Cartões de Crédito (carrossel), Planejamento (metas e assinaturas) e Ajustes (lista base). Implementado seletor de perfil global e ViewModels para todos os módulos.
 - [ ] **Evoluções Futuras do App Mobile**:
-  - [ ] Tela de Extrato Completa com filtros e busca textual.
-  - [ ] Formulário Rico de Transação (BottomSheet) com foto e máscaras.
-  - [ ] Módulo de Cartões de Crédito e Faturas no Compose.
+  - [ ] Gráficos Analíticos no Dashboard (Sprint 3).
+  - [ ] Refinamento do ciclo de faturas de Cartão (Sprint 2 final).
+  - [ ] CRUDs detalhados de cadastros mestres (Sprint 4).
   - [ ] Integração com `CameraX` para captura em tempo real de notas fiscais.
   - [ ] Tela de Login com Biometria e configuração de URL do servidor.
