@@ -1364,9 +1364,17 @@ export const Transactions: React.FC = () => {
         transactionTitle={selectedTransactionForAttachments?.description || "Comprovantes do Lançamento"}
         transactionId={selectedTransactionForAttachments?.id}
         profile={profile}
-        onAttachmentsChanged={() => {
+        onAttachmentsChanged={async () => {
           fetchData();
           refreshSyncStatus(false);
+          if (selectedTransactionForAttachments) {
+            try {
+              const res = await api.get<Transaction>(`/transactions/${selectedTransactionForAttachments.id}`);
+              setSelectedTransactionForAttachments(res.data);
+            } catch {
+              // Mantém o estado anterior se falhar
+            }
+          }
         }}
       />
 

@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { api } from "../api/client";
 import { Category, Contact, Item, Account, PaymentMethod, CreditCard as CreditCardType, Attachment, Transaction, TransactionType, AttachmentType, ATTACHMENT_TYPES } from "../types";
-import { formatCurrency, getTodayBR, maskDateBR, parseDateBRToISO, formatDateToBR } from "../utils/format";
+import { formatCurrency, getTodayBR, maskDateBR, parseDateBRToISO, formatDateToBR, parseCurrencyInputToCents } from "../utils/format";
+import { AttachmentViewerModal } from "./AttachmentViewerModal";
 import { 
   X, Calendar, DollarSign, Tag, User as ContactIcon, FileText, 
   Package, Landmark, Paperclip, Upload, Image as ImageIcon, 
   CheckCircle2, Loader2, Pencil, Clock, Check, ChevronDown, CreditCard, Sparkles,
-  ArrowRightLeft, ArrowRight
+  ArrowRightLeft, ArrowRight, Eye
 } from "lucide-react";
 
 interface TransactionModalProps {
@@ -60,6 +61,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
   const [selectedUploadType, setSelectedUploadType] = useState<AttachmentType>("COMPROVANTE");
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerStartIndex, setViewerStartIndex] = useState(0);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -73,13 +76,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleOpenDatePicker = (ref: React.RefObject<HTMLInputElement | null>) => {
     if (ref.current) {
-      if (typeof ref.current.showPicker === "function") {
-        try {
+      try {
+        if (typeof ref.current.showPicker === "function") {
           ref.current.showPicker();
-        } catch {
+        } else {
           ref.current.focus();
         }
-      } else {
+      } catch {
         ref.current.focus();
       }
     }
@@ -314,8 +317,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     setError(null);
     setLoading(true);
 
-    const amountFloat = parseFloat(amountStr.replace(",", "."));
-    if (isNaN(amountFloat) || amountFloat <= 0) {
+    const amountCents = parseCurrencyInputToCents(amountStr);
+    if (amountCents <= 0) {
       setError("Informe um valor válido maior que zero.");
       setLoading(false);
       return;
@@ -332,8 +335,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setLoading(false);
       return;
     }
-
-    const amountCents = Math.round(amountFloat * 100);
 
     const isoDueDate = parseDateBRToISO(dueDateStr);
     if (!isoDueDate) {
@@ -417,6 +418,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             total_installments: mode === "PARCELADO" ? (parseInt(installments, 10) || 2) : null,
             start_date: isoDueDate,
             due_day: parseInt(dueDay, 10) || new Date().getDate(),
+            attachment_ids: uploadedAttachments.map((a) => a.id),
           });
         }
       }
@@ -509,8 +511,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </button>
           </div>
 
-          {/* Status Switcher (Apenas no Modo Edição) */}
-          {isEditing && (
+          {/* Status Switcher (Modo Edição ou Modo Criação Único) */}
+          {(isEditing || (mode === "UNICO" && type !== "TRANSFERENCIA")) && (
             <div className="space-y-1.5 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800">
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 Status da Transação
@@ -1105,7 +1107,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             {/* Lista de Comprovantes Carregados */}
             {uploadedAttachments.length > 0 && (
               <div className="space-y-2 pt-1">
-                {uploadedAttachments.map((att) => {
+                {uploadedAttachments.map((att, idx) => {
                   const isPdf = att.mime_type === "application/pdf" || att.file_name.toLowerCase().endsWith(".pdf");
                   const currentTypeKey = (att.attachment_type || "COMPROVANTE") as AttachmentType;
                   const typeCfg = ATTACHMENT_TYPES[currentTypeKey] || ATTACHMENT_TYPES.COMPROVANTE;
@@ -1115,22 +1117,45 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       key={att.id}
                       className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 text-xs"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="p-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shrink-0">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div 
+                          onClick={() => {
+                            setViewerStartIndex(idx);
+                            setIsViewerOpen(true);
+                          }}
+                          className="p-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shrink-0 cursor-pointer hover:border-emerald-500 transition-all overflow-hidden flex items-center justify-center w-9 h-9"
+                          title="Clique para visualizar em tela cheia"
+                        >
                           {isPdf ? (
-                            <FileText className="w-4 h-4 text-rose-500" />
+                            <FileText className="w-5 h-5 text-rose-500" />
                           ) : (
-                            <ImageIcon className="w-4 h-4 text-emerald-500" />
+                            <img
+                              src={`/api/v1/attachments/${att.id}/file`}
+                              alt={att.file_name}
+                              className="w-full h-full object-cover rounded"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none";
+                              }}
+                            />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">{att.file_name}</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewerStartIndex(idx);
+                              setIsViewerOpen(true);
+                            }}
+                            className="font-semibold text-zinc-800 dark:text-zinc-200 truncate hover:text-emerald-600 dark:hover:text-emerald-400 text-left block max-w-full"
+                          >
+                            {att.file_name}
+                          </button>
                           <p className="text-[10px] text-zinc-400 font-mono">{att.formatted_size || "Carregado"}</p>
                         </div>
                       </div>
 
-                      {/* Seletor do Tipo de Anexo individual */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      {/* Seletor do Tipo de Anexo individual e Ações */}
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <div className="relative">
                           <select
                             value={currentTypeKey}
@@ -1145,6 +1170,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           </select>
                           <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewerStartIndex(idx);
+                            setIsViewerOpen(true);
+                          }}
+                          className="p-1 text-zinc-400 hover:text-emerald-600 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors"
+                          title="Visualizar anexo"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
 
                         <button
                           type="button"
@@ -1183,6 +1220,28 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         </form>
 
       </div>
+
+      {/* Visualizador de Anexos em Lightbox */}
+      {isViewerOpen && (
+        <AttachmentViewerModal
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+          attachments={uploadedAttachments}
+          transactionTitle={description || "Comprovantes do Lançamento"}
+          profile={profile}
+          onAttachmentsChanged={async () => {
+            if (transactionToEdit) {
+              try {
+                const res = await api.get<Transaction>(`/transactions/${transactionToEdit.id}`);
+                setUploadedAttachments(res.data.attachments || []);
+              } catch {
+                // Silencioso se não conseguir recarregar
+              }
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
+

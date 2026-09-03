@@ -27,6 +27,7 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
   profile,
   onAttachmentsChanged,
 }) => {
+  const [localAttachments, setLocalAttachments] = useState<Attachment[]>(attachments);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -39,9 +40,16 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  React.useEffect(() => {
+    setLocalAttachments(attachments);
+    if (attachments.length > 0 && currentIndex >= attachments.length) {
+      setCurrentIndex(attachments.length - 1);
+    }
+  }, [attachments]);
+
   if (!isOpen) return null;
 
-  const currentAttachment = attachments[currentIndex] || attachments[0];
+  const currentAttachment = localAttachments[currentIndex] || localAttachments[0];
   const isImage = currentAttachment && (
     currentAttachment.mime_type.startsWith("image/") ||
     /\.(jpg|jpeg|png|webp|gif|heic)$/i.test(currentAttachment.file_name)
@@ -55,7 +63,7 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
   const currentTypeCfg = ATTACHMENT_TYPES[currentTypeKey] || ATTACHMENT_TYPES.COMPROVANTE;
 
   const handleNext = () => {
-    if (currentIndex < attachments.length - 1) {
+    if (currentIndex < localAttachments.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setZoom(1);
       setRotation(0);
@@ -91,9 +99,11 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
     }
 
     try {
-      await api.post("/attachments/upload", formData, {
+      const res = await api.post<Attachment>("/attachments/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      setLocalAttachments((prev) => [...prev, res.data]);
+      setCurrentIndex(localAttachments.length);
       setActionSuccess(`${ATTACHMENT_TYPES[uploadType]?.shortLabel} anexado com sucesso!`);
       onAttachmentsChanged();
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -110,10 +120,12 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
     setActionError(null);
     setActionSuccess(null);
     try {
-      await api.patch(`/attachments/${currentAttachment.id}`, {
+      const res = await api.patch<Attachment>(`/attachments/${currentAttachment.id}`, {
         attachment_type: newType,
       });
-      currentAttachment.attachment_type = newType;
+      setLocalAttachments((prev) =>
+        prev.map((a) => (a.id === currentAttachment.id ? res.data : a))
+      );
       setActionSuccess(`Tipo alterado para "${ATTACHMENT_TYPES[newType]?.shortLabel}"!`);
       onAttachmentsChanged();
     } catch (err: any) {
@@ -131,6 +143,7 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
     setActionError(null);
     try {
       await api.delete(`/attachments/${currentAttachment.id}`);
+      setLocalAttachments((prev) => prev.filter((a) => a.id !== currentAttachment.id));
       setActionSuccess("Comprovante excluído com sucesso.");
       onAttachmentsChanged();
       if (currentIndex > 0) {
@@ -264,7 +277,7 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
 
         {/* Área Central: Visualização do Documento ou Estado Vazio */}
         <div className="flex-1 relative bg-zinc-950/90 dark:bg-zinc-950 flex items-center justify-center overflow-hidden">
-          {attachments.length === 0 ? (
+          {localAttachments.length === 0 ? (
             <div className="text-center p-8 space-y-3">
               <div className="w-16 h-16 rounded-3xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-600 mx-auto">
                 <FileText className="w-8 h-8" />
@@ -316,7 +329,7 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
           )}
 
           {/* Controles de Navegação Entre Anexos */}
-          {attachments.length > 1 && (
+          {localAttachments.length > 1 && (
             <>
               <button
                 type="button"
@@ -331,7 +344,7 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={currentIndex === attachments.length - 1}
+                disabled={currentIndex === localAttachments.length - 1}
                 className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/10 disabled:opacity-30 transition-all backdrop-blur-sm"
                 title="Próximo"
               >
@@ -406,9 +419,9 @@ export const AttachmentViewerModal: React.FC<AttachmentViewerModalProps> = ({
                 </div>
               )}
 
-              {attachments.length > 1 && (
+              {localAttachments.length > 1 && (
                 <span className="text-xs font-mono text-zinc-400">
-                  {currentIndex + 1} de {attachments.length}
+                  {currentIndex + 1} de {localAttachments.length}
                 </span>
               )}
             </div>

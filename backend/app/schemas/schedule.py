@@ -26,6 +26,7 @@ class ScheduleBase(BaseModel):
 
 class ScheduleCreate(ScheduleBase):
     profile: ProfileType = Field(..., description="Perfil do plano")
+    attachment_ids: Optional[list[str]] = Field(default=None, description="IDs dos anexos a vincular ao primeiro lançamento")
 
 class ScheduleUpdate(BaseModel):
     description: Optional[str] = Field(None, min_length=1, max_length=255)

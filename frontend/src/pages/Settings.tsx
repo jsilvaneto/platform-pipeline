@@ -4111,7 +4111,7 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
                     <input
                       type="text"
                       required
-                      placeholder="Ex: /home/usuario/meus_anexos ou D:\Wallet\Comprovantes ou /mnt/backup/wallet"
+                      placeholder="Ex: C:\Users\seu_usuario\meus_comprovantes ou /mnt/c/Users/... ou /home/usuario/anexos"
                       value={customDirInput}
                       onChange={(e) => setCustomDirInput(e.target.value)}
                       className="w-full px-4 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 font-mono text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 shadow-inner"
@@ -4120,12 +4120,16 @@ export const Settings: React.FC<SettingsProps> = ({ initialTab = "CATEGORIAS" })
                   <button
                     type="submit"
                     disabled={savingCustomDir || !customDirInput.trim()}
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 shrink-0"
+                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
                   >
                     {savingCustomDir ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     <span>Salvar e Aplicar Pasta</span>
                   </button>
                 </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1.5 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>Suporta caminhos do Windows (<code>C:\...</code> convertido automaticamente no WSL), pastas locais do Linux ou drives em nuvem sincronizados.</span>
+                </p>
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">

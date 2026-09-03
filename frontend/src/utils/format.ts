@@ -78,3 +78,38 @@ export function getTodayBR(): string {
   return `${day}/${month}/${year}`;
 }
 
+/**
+ * Converte string digitada pelo usuário (ex: "1.500,50", "1500,50", "1500.50", "1000", "R$ 250,00")
+ * para valor inteiro em centavos de forma segura e resiliente.
+ */
+export function parseCurrencyInputToCents(value: string): number {
+  if (!value) return 0;
+  const clean = value.trim().replace(/^R\$\s?/, "").replace(/\s/g, "");
+  if (!clean) return 0;
+
+  // Se contiver ponto e vírgula (ex: 1.500,50 ou 1,500.50)
+  if (clean.includes(".") && clean.includes(",")) {
+    const lastComma = clean.lastIndexOf(",");
+    const lastDot = clean.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      // Padrão brasileiro: 1.500,50 -> remove pontos e troca vírgula por ponto
+      const num = parseFloat(clean.replace(/\./g, "").replace(",", "."));
+      return isNaN(num) ? 0 : Math.round(num * 100);
+    } else {
+      // Padrão americano: 1,500.50 -> remove vírgulas
+      const num = parseFloat(clean.replace(/,/g, ""));
+      return isNaN(num) ? 0 : Math.round(num * 100);
+    }
+  }
+
+  // Se contiver apenas vírgula (ex: 1500,50 ou 50,00)
+  if (clean.includes(",")) {
+    const num = parseFloat(clean.replace(",", "."));
+    return isNaN(num) ? 0 : Math.round(num * 100);
+  }
+
+  // Se contiver apenas números e eventualmente ponto decimal (ex: 1500.50 ou 1000)
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : Math.round(num * 100);
+}
+

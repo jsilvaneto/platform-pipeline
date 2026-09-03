@@ -46,11 +46,33 @@ def sanitize_filename(name: str) -> str:
     clean = re.sub(r'[^a-zA-Z0-9_\.\-]', '_', name)
     return clean[:100]
 
+def normalize_storage_path(path_str: str) -> str:
+    """
+    Normaliza caminhos informados pelo usuário, convertendo formatos Windows
+    (ex: C:\\Users\\..., C:/Users/..., D:\\...) para caminhos compatíveis com Linux/WSL
+    (/mnt/c/Users/..., /mnt/d/...) e tratando atalhos como '~'.
+    """
+    if not path_str or not path_str.strip():
+        return ""
+
+    clean = path_str.strip().strip("'\"")
+    clean = clean.replace("\\", "/")
+
+    win_drive_match = re.match(r"^([a-zA-Z]):/(.*)", clean)
+    if win_drive_match and os.name != "nt":
+        drive_letter = win_drive_match.group(1).lower()
+        rest_of_path = win_drive_match.group(2)
+        clean = f"/mnt/{drive_letter}/{rest_of_path}"
+
+    return os.path.abspath(os.path.expanduser(clean))
+
 async def get_storage_directory(db: AsyncSession) -> str:
     """Retorna o diretório ativo de armazenamento configurado ou o padrão."""
     custom_dir = await get_config_value(db, "storage_directory")
     if custom_dir and custom_dir.strip():
-        return os.path.abspath(os.path.expanduser(custom_dir.strip()))
+        normalized = normalize_storage_path(custom_dir)
+        if normalized:
+            return normalized
     return DEFAULT_ATTACHMENT_DIR
 
 def is_directory_writable(dir_path: str) -> bool:
@@ -93,7 +115,9 @@ async def validate_and_set_storage_directory(
     if not directory_path or not directory_path.strip():
         return False, "O caminho do diretório não pode ser vazio.", 0
 
-    clean_path = os.path.abspath(os.path.expanduser(directory_path.strip()))
+    clean_path = normalize_storage_path(directory_path)
+    if not clean_path:
+        return False, "Caminho de diretório inválido.", 0
 
     try:
         os.makedirs(clean_path, exist_ok=True)

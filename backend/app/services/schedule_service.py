@@ -2,7 +2,8 @@ import calendar
 from datetime import date, datetime
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import Schedule, Transaction, CreditCard
+from sqlalchemy import select, update
+from app.models import Schedule, Transaction, CreditCard, Attachment, generate_uuid
 from app.schemas.schedule import ScheduleCreate
 from app.services.credit_card_service import calculate_invoice_period_and_due_date
 
@@ -32,6 +33,7 @@ def calculate_next_date(base_date: date, frequency: str, step: int, fixed_day: i
 async def create_schedule_with_transactions(db: AsyncSession, schedule_in: ScheduleCreate) -> Schedule:
     # 1. Cria o registro mestre do plano
     schedule_data = schedule_in.model_dump()
+    attachment_ids = schedule_data.pop("attachment_ids", None)
     for fk in ["account_id", "credit_card_id", "item_id", "contact_id", "debt_id", "payment_method_id"]:
         if fk in schedule_data and schedule_data[fk] == "":
             schedule_data[fk] = None
@@ -61,6 +63,7 @@ async def create_schedule_with_transactions(db: AsyncSession, schedule_in: Sched
         count = 12
 
     # 4. Cria as transações
+    first_trans_id = None
     for i in range(count):
         inst_number = (i + 1) if schedule_in.schedule_type == "PARCELADA" else None
         total_inst = schedule_in.total_installments if schedule_in.schedule_type == "PARCELADA" else None
@@ -86,7 +89,12 @@ async def create_schedule_with_transactions(db: AsyncSession, schedule_in: Sched
         if schedule_in.schedule_type == "PARCELADA":
             desc = f"{schedule_in.description} ({inst_number}/{total_inst})"
 
+        trans_id = generate_uuid()
+        if i == 0:
+            first_trans_id = trans_id
+
         trans = Transaction(
+            id=trans_id,
             profile=new_schedule.profile,
             type=new_schedule.type,
             account_id=new_schedule.account_id,
@@ -108,6 +116,13 @@ async def create_schedule_with_transactions(db: AsyncSession, schedule_in: Sched
             sync_status="PENDENTE"
         )
         db.add(trans)
+
+    if attachment_ids and first_trans_id:
+        await db.execute(
+            update(Attachment)
+            .where(Attachment.id.in_(attachment_ids))
+            .values(transaction_id=first_trans_id)
+        )
 
     await db.commit()
 
