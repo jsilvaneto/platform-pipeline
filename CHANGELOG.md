@@ -5,6 +5,19 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.0.1] - 2026-09-02
+
+### 🐛 Corrigido
+- **Correção da Violação de Regras de Hooks no Modal de Lançamentos**:
+  - Resolvido erro fatal de React (*"Rendered more hooks than during the previous render"*) em [TransactionModal.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/components/TransactionModal.tsx) que causava tela branca (*white screen*) ao clicar no botão **Novo Lançamento** no Dashboard e na listagem de Lançamentos.
+  - Reposicionado o retorno antecipado `if (!isOpen) return null;` para o encerramento de todos os hooks, imediatamente antes da renderização do JSX.
+  - Adicionadas verificações defensivas contra valores nulos/indefinidos em ordenação de seletores (`(a.name || "").localeCompare(...)`) e exibição de limite disponível em cartões de crédito (`card.available_limit_cents ?? 0`).
+
+### ✨ Adicionado
+- **Error Boundary Global para Resiliência da Interface**:
+  - Criado componente [ErrorBoundary.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/components/ErrorBoundary.tsx) com tratamento visual elegante para exceções em tempo de execução, permitindo ao usuário tentar novamente ou recarregar o sistema sem perda de contexto ou página em branco.
+  - Aplicação envolvida globalmente no [App.tsx](file:///home/jsilvaneto/projetos/wallet/frontend/src/App.tsx) com `<ErrorBoundary>`.
+
 ---
 
 ## [1.0.0] - 2026-08-29
@@ -46,4 +59,5 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+[1.0.1]: https://github.com/jsilvaneto/wallet/releases/tag/v1.0.1
 [1.0.0]: https://github.com/jsilvaneto/wallet/releases/tag/v1.0.0

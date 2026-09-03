@@ -99,3 +99,4 @@ Abra no seu navegador:
 - [.ai/openapi.json](.ai/openapi.json) - Especificação OpenAPI 3.1 da API REST (gerado automaticamente).
 - [.ai/schema.sql](.ai/schema.sql) - Estrutura e DDL do banco de dados SQLite WAL.
 - [.ai/DECISIONS/](.ai/DECISIONS/) - Registro de Decisões de Arquitetura (ADRs 001 a 015).
+#
