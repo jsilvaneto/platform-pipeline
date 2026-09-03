@@ -16,6 +16,20 @@ from app.api.v1.deps import get_current_user
 router = APIRouter(prefix="/schedules", tags=["Pagamentos Planejados & Recorrências"])
 
 async def build_schedule_response(s: Schedule, db: AsyncSession) -> ScheduleResponse:
+    # 0. Garante que os relacionamentos estão carregados com selectinload
+    sched_query = (
+        select(Schedule)
+        .options(
+            selectinload(Schedule.category),
+            selectinload(Schedule.contact),
+            selectinload(Schedule.credit_card),
+            selectinload(Schedule.payment_method),
+        )
+        .where(Schedule.id == s.id)
+    )
+    sched_res = await db.execute(sched_query)
+    s = sched_res.scalar_one_or_none() or s
+
     # 1. Carrega estatísticas de transações vinculadas
     trans_query = select(Transaction).where(Transaction.schedule_id == s.id)
     trans_res = await db.execute(trans_query)
