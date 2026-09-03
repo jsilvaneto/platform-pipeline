@@ -6,6 +6,7 @@ import { Transactions } from "./pages/Transactions";
 import { CreditCards } from "./pages/CreditCards";
 import { Planning } from "./pages/Planning";
 import { Settings } from "./pages/Settings";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { api } from "./api/client";
 import { 
   LayoutDashboard, ListFilter, TrendingUp, Settings as SettingsIcon, 
@@ -232,8 +233,10 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <MainLayout />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

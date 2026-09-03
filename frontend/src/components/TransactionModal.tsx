@@ -186,8 +186,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     loadTypeFilteredDependencies();
   }, [isOpen, profile, type, transactionToEdit]);
 
-  if (!isOpen) return null;
-
   const handleCardChange = (cardId: string) => {
     setCreditCardId(cardId);
     if (!cardId) {
@@ -239,10 +237,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
     if (initialCreditCardId && creditCards.length > 0) {
       handleCardChange(initialCreditCardId);
     }
-  }, [initialCreditCardId, creditCards]);
+  }, [isOpen, initialCreditCardId, creditCards]);
 
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -431,6 +430,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl xl:max-w-2xl shadow-2xl overflow-hidden">
@@ -591,11 +592,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               >
                 <option value="">[Preenchimento manual ou selecione um item]</option>
                 {[...categories]
-                  .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                  .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                   .map((cat) => {
                     const catItems = items
                       .filter((it) => it.category_id === cat.id)
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }));
                     if (catItems.length === 0) return null;
 
                     return (
@@ -830,7 +831,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   >
                     <option value="">Selecione a conta de saída...</option>
                     {[...accounts]
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                       .map((acc) => (
                         <option key={acc.id} value={acc.id} disabled={acc.id === destinationAccountId}>
                           {acc.name} ({acc.type === "CORRENTE" ? "Corrente" : acc.type === "POUPANCA" ? "Poupança" : acc.type === "INVESTIMENTO" ? "Investimento" : acc.type === "CAIXA" ? "Caixa" : "Outro"})
@@ -860,7 +861,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   >
                     <option value="">Selecione a conta de entrada...</option>
                     {[...accounts]
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                       .map((acc) => (
                         <option key={acc.id} value={acc.id} disabled={acc.id === accountId}>
                           {acc.name} ({acc.type === "CORRENTE" ? "Corrente" : acc.type === "POUPANCA" ? "Poupança" : acc.type === "INVESTIMENTO" ? "Investimento" : acc.type === "CAIXA" ? "Caixa" : "Outro"})
@@ -882,7 +883,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 >
                   <option value="">Nenhum (Transferência Bancária Direta)</option>
                   {[...paymentMethods]
-                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                     .map((pm) => (
                       <option key={pm.id} value={pm.id}>
                         {pm.name}
@@ -905,7 +906,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 >
                   {categories.length === 0 && <option value="">Nenhuma categoria encontrada</option>}
                   {[...categories]
-                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                     .map((cat) => {
                       const natLabel = cat.nature && cat.nature !== "NENHUM" ? ` • ${cat.nature.charAt(0) + cat.nature.slice(1).toLowerCase()}` : "";
                       return (
@@ -930,7 +931,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   >
                     <option value="">Nenhuma (Opcional)</option>
                     {[...accounts]
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                       .map((acc) => (
                         <option key={acc.id} value={acc.id}>
                           {acc.name} ({acc.type === "CORRENTE" ? "Corrente" : acc.type === "POUPANCA" ? "Poupança" : acc.type === "INVESTIMENTO" ? "Investimento" : acc.type === "CAIXA" ? "Caixa" : "Outro"})
@@ -951,7 +952,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   >
                     <option value="">Nenhuma (Opcional)</option>
                     {[...paymentMethods]
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                       .map((pm) => (
                         <option key={pm.id} value={pm.id}>
                           {pm.name}
@@ -972,10 +973,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   >
                     <option value="">Nenhum (Lançamento Comum)</option>
                     {[...creditCards]
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                       .map((card) => (
                         <option key={card.id} value={card.id}>
-                          {card.name} (Disp: R$ {(card.available_limit_cents / 100).toFixed(0)})
+                          {card.name} (Disp: R$ {((card.available_limit_cents ?? 0) / 100).toFixed(0)})
                         </option>
                       ))}
                   </select>
@@ -993,7 +994,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   >
                     <option value="">Nenhum (Opcional)</option>
                     {[...contacts]
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }))
                       .map((ct) => (
                         <option key={ct.id} value={ct.id}>
                           {ct.name} ({ct.type})
