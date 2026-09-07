@@ -31,6 +31,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
+      - PYTHONPATH=/app
       - SECRET_KEY=${SECRET_KEY:-dev_secret_key_1234567890_change_in_production}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-43200}
       - ENVIRONMENT=development
@@ -56,7 +57,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    command: ["npm", "run", "dev", "--", "--host"]
+    command: ["sh", "-c", "npm install && npm run dev -- --host"]
     depends_on:
       - backend
     networks:

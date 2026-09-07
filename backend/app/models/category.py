@@ -13,6 +13,6 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     icon: Mapped[str] = mapped_column(String(50), default="Tag", nullable=False)
     color: Mapped[str] = mapped_column(String(30), default="#6366f1", nullable=False)
-    created_at: Mapped[str] = mapped_column(String(30), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(40), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
 
     user = relationship("User", backref="categories", lazy="selectin")

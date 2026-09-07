@@ -34,9 +34,9 @@ class Expense(Base):
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[str] = mapped_column(String(30), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(40), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
     updated_at: Mapped[str] = mapped_column(
-        String(30),
+        String(40),
         default=lambda: datetime.now(timezone.utc).isoformat(),
         onupdate=lambda: datetime.now(timezone.utc).isoformat(),
         nullable=False

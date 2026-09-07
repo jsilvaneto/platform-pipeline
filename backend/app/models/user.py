@@ -12,9 +12,9 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[str] = mapped_column(String(30), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(40), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
     updated_at: Mapped[str] = mapped_column(
-        String(30),
+        String(40),
         default=lambda: datetime.now(timezone.utc).isoformat(),
         onupdate=lambda: datetime.now(timezone.utc).isoformat(),
         nullable=False

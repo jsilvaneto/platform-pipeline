@@ -21,12 +21,12 @@ class Payment(Base):
     installment_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     due_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # YYYY-MM-DD
-    paid_at: Mapped[str | None] = mapped_column(String(30), nullable=True)         # ISO datetime
+    paid_at: Mapped[str | None] = mapped_column(String(40), nullable=True)         # ISO datetime
     status: Mapped[str] = mapped_column(String(20), default="PENDENTE", index=True, nullable=False)
 
-    created_at: Mapped[str] = mapped_column(String(30), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(40), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
     updated_at: Mapped[str] = mapped_column(
-        String(30),
+        String(40),
         default=lambda: datetime.now(timezone.utc).isoformat(),
         onupdate=lambda: datetime.now(timezone.utc).isoformat(),
         nullable=False

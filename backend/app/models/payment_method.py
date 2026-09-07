@@ -18,6 +18,6 @@ class PaymentMethod(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     type: Mapped[str] = mapped_column(String(30), default="OUTRO", nullable=False)
-    created_at: Mapped[str] = mapped_column(String(30), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(40), default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
 
     user = relationship("User", backref="payment_methods", lazy="selectin")
