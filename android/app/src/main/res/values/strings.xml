@@ -1,8 +1,0 @@
-<resources>
-    <string name="app_name">Wallet</string>
-    <string name="quick_entry">Novo Lançamento</string>
-    <string name="personal_profile">Pessoal</string>
-    <string name="business_profile">Empresa</string>
-    <string name="sync_status_pending">Pendente de Sincronização</string>
-    <string name="sync_status_synced">Sincronizado</string>
-</resources>
