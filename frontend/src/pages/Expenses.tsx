@@ -43,7 +43,7 @@ const ESSENTIALITY_LABELS: Record<EssentialityType, { label: string; color: stri
   },
   DESEJO: {
     label: "Desejo",
-    color: "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+    color: "bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800",
   },
   NENHUM: {
     label: "Geral",
@@ -288,7 +288,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
           {/* Botão Novo Registro */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-sm shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-sm shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
             <span>Novo Registro</span>
@@ -351,7 +351,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ExpenseStatus | "ALL")}
-            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">Status: Todos</option>
             <option value="PENDENTE">Apenas Pendentes</option>
@@ -362,7 +362,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">Categoria: Todas</option>
             {categories.map((c) => (
@@ -376,7 +376,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
           <select
             value={essentialityFilter}
             onChange={(e) => setEssentialityFilter(e.target.value as EssentialityType | "ALL")}
-            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">Essencialidade: Todas</option>
             <option value="OBRIGATORIO">Obrigatório</option>
@@ -394,7 +394,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
       {/* Lista de Despesas */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
           <span className="text-sm text-zinc-500 dark:text-zinc-400">Carregando despesas...</span>
         </div>
       ) : error ? (
@@ -415,7 +415,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="mt-5 inline-flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors"
+            className="mt-5 inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Adicionar Primeira Despesa</span>
@@ -484,7 +484,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
                         {isParcelado && (
                           <>
                             <span>&bull;</span>
-                            <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                            <span className="font-medium text-blue-600 dark:text-blue-400">
                               {expense.installments_count} parcelas
                             </span>
                           </>
@@ -647,7 +647,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
               placeholder="Ex: Supermercado Mensal, Aluguel, Farmácia"
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -663,7 +663,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
                 placeholder="0,00"
                 value={formAmountStr}
                 onChange={(e) => setFormAmountStr(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -674,7 +674,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
               <select
                 value={formInstallments}
                 onChange={(e) => setFormInstallments(Number(e.target.value))}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={1}>À vista (1x)</option>
                 {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24].map((n) => (
@@ -698,7 +698,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
                   required
                   value={formIssueDate}
                   onChange={(e) => setFormIssueDate(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -713,7 +713,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
                   required
                   value={formDueDate}
                   onChange={(e) => setFormDueDate(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -728,7 +728,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
               <select
                 value={formCategoryId}
                 onChange={(e) => setFormCategoryId(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -745,7 +745,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
               <select
                 value={formPaymentMethodId}
                 onChange={(e) => setFormPaymentMethodId(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {paymentMethods.map((pm) => (
                   <option key={pm.id} value={pm.id}>
@@ -765,7 +765,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
               <select
                 value={formEssentiality}
                 onChange={(e) => setFormEssentiality(e.target.value as EssentialityType)}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="OBRIGATORIO">Obrigatório (Sobrevivência, Aluguel, Luz)</option>
                 <option value="NECESSARIO">Necessário (Alimentação, Transporte)</option>
@@ -780,7 +780,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
                   type="checkbox"
                   checked={formIsRecurring}
                   onChange={(e) => setFormIsRecurring(e.target.checked)}
-                  className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  className="rounded border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500 w-4 h-4"
                 />
                 <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Despesa fixa mensal contínua
@@ -799,7 +799,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
               placeholder="Detalhes adicionais, comprovante ou observações"
               value={formNotes}
               onChange={(e) => setFormNotes(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -815,7 +815,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 flex items-center space-x-2"
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center space-x-2"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Salvar Despesa</span>

@@ -16,7 +16,9 @@ import {
   User,
   UserCreateInput,
   UserUpdateInput,
+  SystemDiagnosticsResponse,
 } from "../types";
+
 
 export const walletApi = {
   // Categorias
@@ -118,4 +120,11 @@ export const walletApi = {
   async deleteUser(id: string): Promise<void> {
     await api.delete(`/users/${id}`);
   },
+
+  // Sistema & Diagnósticos de Infraestrutura
+  async getSystemDiagnostics(): Promise<SystemDiagnosticsResponse> {
+    const { data } = await api.get<SystemDiagnosticsResponse>("/system/diagnostics");
+    return data;
+  },
 };
+

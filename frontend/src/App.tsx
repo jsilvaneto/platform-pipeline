@@ -19,7 +19,7 @@ const MainApp: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
         <div className="flex flex-col items-center space-y-3">
-          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
           <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
             Carregando Wallet...
           </span>

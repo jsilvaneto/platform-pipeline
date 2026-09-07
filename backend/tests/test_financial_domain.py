@@ -7,6 +7,13 @@ from app.schemas.expense import ExpenseCreate
 from app.schemas.category import CategoryCreate
 from app.schemas.payment_method import PaymentMethodCreate
 from app.schemas.dashboard import DashboardMetrics, MonthlySpending
+from app.schemas.system import (
+    SystemDiagnosticsResponse,
+    DatabaseDiagnostics,
+    VolumetricStats,
+    ApplicationDiagnostics,
+)
+
 
 class TestFinancialDomainLogic(unittest.TestCase):
 
@@ -153,6 +160,34 @@ class TestFinancialDomainLogic(unittest.TestCase):
         self.assertEqual(metrics.period, "2026")
         self.assertEqual(len(metrics.monthly_breakdown), 1)
 
+    def test_system_diagnostics_schema(self):
+        """Valida schema de diagnóstico de banco de dados e infraestrutura."""
+        diag = SystemDiagnosticsResponse(
+            timestamp="2026-09-07T22:00:00Z",
+            database=DatabaseDiagnostics(
+                database_name="wallet",
+                server_host="localhost",
+                server_port=5432,
+                latency_ms=1.45,
+            ),
+            volumetrics=VolumetricStats(
+                total_categories=5,
+                total_payment_methods=3,
+                total_expenses=12,
+                total_payments=24,
+                total_users=2,
+            ),
+            application=ApplicationDiagnostics(
+                app_name="Wallet",
+                version="1.0.0",
+                environment="development",
+            ),
+        )
+        self.assertEqual(diag.database.engine, "PostgreSQL 16")
+        self.assertEqual(diag.database.currency_storage_mode, "Inteiros em Centavos (amount_cents)")
+        self.assertEqual(diag.volumetrics.total_categories, 5)
+
 if __name__ == "__main__":
     unittest.main()
+
 

@@ -30,14 +30,14 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
             onClick={() => onSelectTab("inicio")}
             className="flex items-center space-x-2.5 cursor-pointer select-none"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
               <Wallet className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-lg text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
                 Wallet
               </span>
-              <span className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 leading-tight mt-0.5">
+              <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 leading-tight mt-0.5">
                 Finanças Pessoais
               </span>
             </div>
@@ -49,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
               onClick={() => onSelectTab("inicio")}
               className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
                 currentTab === "inicio"
-                  ? "bg-zinc-100 dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-semibold"
+                  ? "bg-zinc-100 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 font-semibold"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
@@ -61,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
               onClick={() => onSelectTab("registros")}
               className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
                 currentTab === "registros"
-                  ? "bg-zinc-100 dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-semibold"
+                  ? "bg-zinc-100 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 font-semibold"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
@@ -73,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
               onClick={() => onSelectTab("configuracoes")}
               className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
                 currentTab === "configuracoes"
-                  ? "bg-zinc-100 dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-semibold"
+                  ? "bg-zinc-100 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 font-semibold"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
                   {user.username}
                 </span>
                 <span className="text-[10px] text-zinc-500 dark:text-zinc-400 flex items-center justify-end space-x-0.5">
-                  {user.is_admin && <Shield className="w-2.5 h-2.5 text-indigo-500 inline mr-0.5" />}
+                  {user.is_admin && <Shield className="w-2.5 h-2.5 text-blue-500 inline mr-0.5" />}
                   <span>{user.is_admin ? "Administrador" : "Usuário"}</span>
                 </span>
               </div>
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
           onClick={() => onSelectTab("inicio")}
           className={`text-xs font-medium py-1.5 px-3 rounded-xl flex items-center space-x-1.5 ${
             currentTab === "inicio"
-              ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 font-semibold"
+              ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-semibold"
               : "text-zinc-600 dark:text-zinc-400"
           }`}
         >
@@ -138,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
           onClick={() => onSelectTab("registros")}
           className={`text-xs font-medium py-1.5 px-3 rounded-xl flex items-center space-x-1.5 ${
             currentTab === "registros"
-              ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 font-semibold"
+              ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-semibold"
               : "text-zinc-600 dark:text-zinc-400"
           }`}
         >
@@ -150,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
           onClick={() => onSelectTab("configuracoes")}
           className={`text-xs font-medium py-1.5 px-3 rounded-xl flex items-center space-x-1.5 ${
             currentTab === "configuracoes"
-              ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 font-semibold"
+              ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-semibold"
               : "text-zinc-600 dark:text-zinc-400"
           }`}
         >

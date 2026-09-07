@@ -12,13 +12,11 @@ import {
   Sparkles,
   PieChart,
   ShieldCheck,
-  CreditCard,
   BarChart3,
   TrendingUp,
   RotateCcw,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
-import { api } from "../api/client";
 import { DashboardMetrics, UpcomingPayment, MonthlySpending } from "../types";
 import { formatCurrency, formatDate } from "../utils/format";
 import { useAuth } from "../context/AuthContext";
@@ -26,13 +24,6 @@ import { useAuth } from "../context/AuthContext";
 interface DashboardProps {
   onNavigateToRegistros: () => void;
   onOpenNewExpenseModal: () => void;
-}
-
-interface SystemHealth {
-  status: string;
-  database: string;
-  version: string;
-  environment: string;
 }
 
 const ESSENTIALITY_NAME_MAP: Record<string, { label: string; desc: string; color: string }> = {
@@ -49,7 +40,7 @@ const ESSENTIALITY_NAME_MAP: Record<string, { label: string; desc: string; color
   DESEJO: {
     label: "Desejo & Lazer",
     desc: "Restaurantes, compras, viagens",
-    color: "#8b5cf6",
+    color: "#0284c7",
   },
   NENHUM: {
     label: "Geral",
@@ -70,19 +61,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // O dashboard sempre inicializa e apresenta os dados do ano atual
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [health, setHealth] = useState<SystemHealth | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hoveredMonth, setHoveredMonth] = useState<MonthlySpending | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [metricsRes, healthRes] = await Promise.all([
-        walletApi.getDashboardMetrics({ year: selectedYear }),
-        api.get<SystemHealth>("/health").then((r) => r.data).catch(() => null),
-      ]);
+      const metricsRes = await walletApi.getDashboardMetrics({ year: selectedYear });
       setMetrics(metricsRes);
-      if (healthRes) setHealth(healthRes);
     } catch (err) {
       console.error("Erro ao carregar dados do dashboard:", err);
     } finally {
@@ -141,10 +127,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Top Banner & Período Anual */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-br from-indigo-900/20 via-indigo-600/10 to-transparent border border-indigo-200/50 dark:border-indigo-900/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-br from-blue-900/20 via-blue-600/10 to-transparent border border-blue-200/50 dark:border-blue-900/30">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center space-x-1">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center space-x-1">
               <Sparkles className="w-3 h-3" />
               <span>Visão Anual Consolidada</span>
             </span>
@@ -159,7 +145,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">
             Acompanhe o balanço financeiro e a distribuição de despesas de todo o exercício de{" "}
-            <strong className="text-indigo-600 dark:text-indigo-400 font-semibold">{selectedYear}</strong>.
+            <strong className="text-blue-600 dark:text-blue-400 font-semibold">{selectedYear}</strong>.
           </p>
         </div>
 
@@ -199,7 +185,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <button
             onClick={onOpenNewExpenseModal}
-            className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm flex items-center space-x-2 shadow-sm shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm flex items-center space-x-2 shadow-sm shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
             <span>Lançar Despesa</span>
@@ -222,7 +208,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               Média mensal: {formatCurrency(monthlyAverageCents)}
             </span>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
             <Wallet className="w-5 h-5" />
           </div>
         </div>
@@ -310,7 +296,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2 text-base">
-              <BarChart3 className="w-5 h-5 text-indigo-500" />
+              <BarChart3 className="w-5 h-5 text-blue-500" />
               <span>Evolução Mensal de Despesas &bull; Exercício {selectedYear}</span>
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
@@ -367,7 +353,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       style={{ height: `${heightPercent}%` }}
                       className={`w-full rounded-xl overflow-hidden flex flex-col justify-end transition-all duration-300 group-hover:brightness-110 ${
                         isThisMonth
-                          ? "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-zinc-900 shadow-md shadow-indigo-500/20"
+                          ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-zinc-900 shadow-md shadow-blue-500/20"
                           : ""
                       } ${m.total_cents === 0 ? "bg-zinc-100 dark:bg-zinc-800/60" : ""}`}
                     >
@@ -397,14 +383,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span
                       className={`text-xs font-semibold ${
                         isThisMonth
-                          ? "text-indigo-600 dark:text-indigo-400"
+                          ? "text-blue-600 dark:text-blue-400"
                           : "text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100"
                       }`}
                     >
                       {m.month_name}
                     </span>
                     {isThisMonth && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 mt-0.5" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 mt-0.5" />
                     )}
                   </div>
                 </div>
@@ -416,7 +402,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Rodapé do Gráfico com Insights */}
         <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="flex items-center space-x-2 text-zinc-600 dark:text-zinc-400">
-            <TrendingUp className="w-4 h-4 text-indigo-500" />
+            <TrendingUp className="w-4 h-4 text-blue-500" />
             <span>
               Mês de Maior Gasto:{" "}
               <strong className="text-zinc-900 dark:text-zinc-100">
@@ -439,7 +425,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center space-x-2 text-zinc-600 dark:text-zinc-400 sm:justify-end">
             <span>
               Exercício:{" "}
-              <strong className="text-indigo-600 dark:text-indigo-400">
+              <strong className="text-blue-600 dark:text-blue-400">
                 {isCurrentYearActive ? `Ano Atual (${selectedYear})` : selectedYear}
               </strong>
             </span>
@@ -453,12 +439,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2">
-              <PieChart className="w-4 h-4 text-indigo-500" />
+              <PieChart className="w-4 h-4 text-blue-500" />
               <span>Despesas por Categoria ({selectedYear})</span>
             </h3>
             <button
               onClick={onNavigateToRegistros}
-              className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center space-x-1"
+              className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center space-x-1"
             >
               <span>Ver detalhes</span>
               <ArrowRight className="w-3 h-3" />
@@ -512,7 +498,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-indigo-500" />
+              <ShieldCheck className="w-4 h-4 text-blue-500" />
               <span>Saúde Financeira no Ano ({selectedYear})</span>
             </h3>
             <span className="text-xs text-zinc-400">Classificação acumulada</span>
@@ -567,113 +553,70 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Seção Inferior: Próximos Vencimentos & Status do Sistema */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Próximos Vencimentos a Pagar */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-indigo-500" />
-              <span>Próximos Vencimentos a Pagar</span>
-            </h3>
-            <button
-              onClick={onNavigateToRegistros}
-              className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center space-x-1"
-            >
-              <span>Ver todos os registros</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
+      {/* Seção Inferior: Próximos Vencimentos a Pagar (Largura Completa) */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            <span>Próximos Vencimentos a Pagar</span>
+          </h3>
+          <button
+            onClick={onNavigateToRegistros}
+            className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center space-x-1"
+          >
+            <span>Ver todos os registros</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
 
-          {metrics?.upcoming_payments && metrics.upcoming_payments.length > 0 ? (
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {metrics.upcoming_payments.map((item: UpcomingPayment) => (
-                <div
-                  key={item.payment_id}
-                  className="py-3 flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <div>
-                      <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block">
-                        {item.description}
+        {metrics?.upcoming_payments && metrics.upcoming_payments.length > 0 ? (
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {metrics.upcoming_payments.map((item: UpcomingPayment) => (
+              <div
+                key={item.payment_id}
+                className="py-3 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center space-x-3">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block">
+                      {item.description}
+                    </span>
+                    <div className="flex items-center space-x-2 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                      <span>{item.category_name}</span>
+                      <span>&bull;</span>
+                      <span>Vence em: {formatDate(item.due_date)}</span>
+                      <span>&bull;</span>
+                      <span className="font-medium text-blue-600 dark:text-blue-400">
+                        {item.installment_text}
                       </span>
-                      <div className="flex items-center space-x-2 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                        <span>{item.category_name}</span>
-                        <span>&bull;</span>
-                        <span>Vence em: {formatDate(item.due_date)}</span>
-                        <span>&bull;</span>
-                        <span className="font-medium text-indigo-600 dark:text-indigo-400">
-                          {item.installment_text}
-                        </span>
-                      </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                      {formatCurrency(item.amount_cents)}
-                    </span>
-                    <button
-                      onClick={() => handleQuickPay(item.payment_id)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors flex items-center space-x-1"
-                    >
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      <span>Pagar</span>
-                    </button>
-                  </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-zinc-400 text-xs">
-              Nenhuma conta pendente nos próximos dias. Tudo em dia! 🎉
-            </div>
-          )}
-        </div>
 
-        {/* Status da Infraestrutura & Banco */}
-        <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2">
-              <CreditCard className="w-4 h-4 text-indigo-500" />
-              <span>Infra & Integridade</span>
-            </h3>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              PostgreSQL 16
-            </span>
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                    {formatCurrency(item.amount_cents)}
+                  </span>
+                  <button
+                    onClick={() => handleQuickPay(item.payment_id)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors flex items-center space-x-1"
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>Pagar</span>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-800 text-sm">
-            <div className="py-2.5 flex justify-between">
-              <span className="text-zinc-500 dark:text-zinc-400">Armazenamento</span>
-              <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                Centavos Inteiros
-              </span>
-            </div>
-            <div className="py-2.5 flex justify-between">
-              <span className="text-zinc-500 dark:text-zinc-400">Banco de Dados</span>
-              <span className="font-mono text-zinc-800 dark:text-zinc-200">
-                {health?.database || "PostgreSQL"}
-              </span>
-            </div>
-            <div className="py-2.5 flex justify-between">
-              <span className="text-zinc-500 dark:text-zinc-400">Status</span>
-              <span className="font-medium text-emerald-600 capitalize">
-                {health?.status || "Operacional"}
-              </span>
-            </div>
-            <div className="py-2.5 flex justify-between">
-              <span className="text-zinc-500 dark:text-zinc-400">App Version</span>
-              <span className="font-mono text-zinc-800 dark:text-zinc-200">
-                v{health?.version || "1.0.0"}
-              </span>
-            </div>
+        ) : (
+          <div className="py-12 text-center text-zinc-400 text-xs">
+            Nenhuma conta pendente nos próximos dias. Tudo em dia! 🎉
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

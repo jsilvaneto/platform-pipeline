@@ -197,6 +197,43 @@ export interface DashboardMetrics {
 }
 
 
+export interface DatabaseDiagnostics {
+  engine: string;
+  driver: string;
+  status: string;
+  database_name: string;
+  server_host: string;
+  server_port: number;
+  latency_ms: number;
+  currency_storage_mode: string;
+  zero_residual_precision: boolean;
+}
+
+export interface VolumetricStats {
+  total_categories: number;
+  total_payment_methods: number;
+  total_expenses: number;
+  total_payments: number;
+  total_users: number;
+}
+
+export interface ApplicationDiagnostics {
+  app_name: string;
+  version: string;
+  environment: string;
+  framework: string;
+  auth_algorithm: string;
+  password_hasher: string;
+}
+
+export interface SystemDiagnosticsResponse {
+  timestamp: string;
+  database: DatabaseDiagnostics;
+  volumetrics: VolumetricStats;
+  application: ApplicationDiagnostics;
+}
+
 export interface ApiErrorDetail {
   detail: string | Array<{ loc: string[]; msg: string; type: string }>;
 }
+
