@@ -169,6 +169,8 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 server_host="localhost",
                 server_port=5432,
                 latency_ms=1.45,
+                size_bytes=8650752,
+                size_pretty="8448 kB",
             ),
             volumetrics=VolumetricStats(
                 total_categories=5,
@@ -185,7 +187,9 @@ class TestFinancialDomainLogic(unittest.TestCase):
         )
         self.assertEqual(diag.database.engine, "PostgreSQL 16")
         self.assertEqual(diag.database.currency_storage_mode, "Inteiros em Centavos (amount_cents)")
+        self.assertEqual(diag.database.size_pretty, "8448 kB")
         self.assertEqual(diag.volumetrics.total_categories, 5)
+
 
 if __name__ == "__main__":
     unittest.main()

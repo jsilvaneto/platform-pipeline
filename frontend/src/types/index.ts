@@ -207,7 +207,10 @@ export interface DatabaseDiagnostics {
   latency_ms: number;
   currency_storage_mode: string;
   zero_residual_precision: boolean;
+  size_bytes: number;
+  size_pretty: string;
 }
+
 
 export interface VolumetricStats {
   total_categories: number;

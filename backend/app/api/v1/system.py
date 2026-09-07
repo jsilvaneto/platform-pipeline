@@ -31,6 +31,14 @@ async def get_system_diagnostics(
     await db.execute(text("SELECT 1"))
     latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
+    # Consulta de tamanho do banco de dados no PostgreSQL
+    size_res = await db.execute(
+        text("SELECT pg_database_size(current_database()), pg_size_pretty(pg_database_size(current_database()))")
+    )
+    size_row = size_res.first()
+    size_bytes = int(size_row[0]) if size_row and size_row[0] is not None else 0
+    size_pretty = str(size_row[1]) if size_row and size_row[1] is not None else "0 MB"
+
     # Coleta de volumetria do usuário autenticado (e contagem global de usuários)
     cat_count = await db.scalar(select(func.count(Category.id)).where(Category.user_id == current_user.id)) or 0
     pm_count = await db.scalar(select(func.count(PaymentMethod.id)).where(PaymentMethod.user_id == current_user.id)) or 0
@@ -50,7 +58,10 @@ async def get_system_diagnostics(
             latency_ms=latency_ms,
             currency_storage_mode="Inteiros em Centavos (amount_cents)",
             zero_residual_precision=True,
+            size_bytes=size_bytes,
+            size_pretty=size_pretty,
         ),
+
         volumetrics=VolumetricStats(
             total_categories=cat_count,
             total_payment_methods=pm_count,

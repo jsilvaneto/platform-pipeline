@@ -18,7 +18,6 @@ import {
   Coins,
   ShieldCheck,
   RefreshCw,
-  HardDrive,
   Cpu,
   Wallet,
 } from "lucide-react";
@@ -693,6 +692,12 @@ export const Settings: React.FC = () => {
                   <span className="text-zinc-500 dark:text-zinc-400">Latência de Query</span>
                   <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
                     {diagnostics?.database.latency_ms ? `${diagnostics.database.latency_ms} ms` : "..."}
+                  </span>
+                </div>
+                <div className="py-2.5 flex justify-between">
+                  <span className="text-zinc-500 dark:text-zinc-400">Tamanho em Disco</span>
+                  <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+                    {diagnostics?.database.size_pretty || "0 MB"}
                   </span>
                 </div>
                 <div className="py-2.5 flex justify-between">

@@ -10,6 +10,9 @@ class DatabaseDiagnostics(BaseModel):
     latency_ms: float
     currency_storage_mode: str = Field(default="Inteiros em Centavos (amount_cents)")
     zero_residual_precision: bool = Field(default=True)
+    size_bytes: int = Field(default=0, description="Tamanho do banco de dados em bytes")
+    size_pretty: str = Field(default="0 MB", description="Tamanho formatado do banco de dados (ex: 8.5 MB)")
+
 
 class VolumetricStats(BaseModel):
     total_categories: int
