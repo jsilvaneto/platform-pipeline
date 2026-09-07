@@ -175,16 +175,27 @@ export interface UpcomingPayment {
   status: ExpenseStatus;
 }
 
+export interface MonthlySpending {
+  month: number;
+  month_name: string;
+  total_cents: number;
+  paid_cents: number;
+  pending_cents: number;
+}
+
 export interface DashboardMetrics {
   period: string;
+  year: number;
   total_expenses_cents: number;
   total_paid_cents: number;
   total_pending_cents: number;
   total_overdue_cents: number;
+  monthly_breakdown: MonthlySpending[];
   by_category: CategorySpending[];
   by_essentiality: EssentialitySpending[];
   upcoming_payments: UpcomingPayment[];
 }
+
 
 export interface ApiErrorDetail {
   detail: string | Array<{ loc: string[]; msg: string; type: string }>;

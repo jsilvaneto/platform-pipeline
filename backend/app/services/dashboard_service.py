@@ -7,18 +7,35 @@ from app.models.payment import Payment
 from app.models.expense import Expense
 from app.schemas.dashboard import (
     DashboardMetrics,
+    MonthlySpending,
     CategorySpending,
     EssentialitySpending,
     UpcomingPayment,
 )
 
+MONTH_NAMES: list[str] = [
+    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+    "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+]
+
 async def get_dashboard_metrics(
-    db: AsyncSession, user_id: str, month: str | None = None
+    db: AsyncSession,
+    user_id: str,
+    year: int | None = None,
+    month: str | None = None,
 ) -> DashboardMetrics:
-    """Calcula indicadores consolidados de despesas e pagamentos para o mês de referência."""
+    """Calcula indicadores consolidados de despesas e pagamentos para o ano atual (ou período informado)."""
     today = date.today()
     today_str = today.isoformat()
-    period = month if month else today.strftime("%Y-%m")
+
+    if month:
+        target_year = int(month.split("-")[0])
+        period = month
+        prefix_filter = month
+    else:
+        target_year = year if year is not None else today.year
+        period = str(target_year)
+        prefix_filter = f"{target_year}-"
 
     # Busca todas as parcelas do usuário no período com dados da despesa e categoria
     query = (
@@ -29,8 +46,8 @@ async def get_dashboard_metrics(
         )
         .where(
             Payment.user_id == user_id,
-            Payment.due_date.startswith(period),
-            Payment.status != "CANCELADO"
+            Payment.due_date.startswith(prefix_filter),
+            Payment.status != "CANCELADO",
         )
     )
     result = await db.execute(query)
@@ -40,15 +57,43 @@ async def get_dashboard_metrics(
     total_paid_cents = sum(p.amount_cents for p in payments if p.status == "CONCLUIDO")
     total_pending_cents = sum(p.amount_cents for p in payments if p.status == "PENDENTE")
 
-    # Vencidos no geral (qualquer parcela pendente com data anterior a hoje)
+    # Vencidos no ano informado (parcelas pendentes com data anterior a hoje no ano de referência)
     overdue_query = select(Payment).where(
         Payment.user_id == user_id,
         Payment.status == "PENDENTE",
-        Payment.due_date < today_str
+        Payment.due_date < today_str,
+        Payment.due_date.startswith(str(target_year)),
     )
     overdue_res = await db.execute(overdue_query)
     overdue_payments = overdue_res.scalars().all()
     total_overdue_cents = sum(p.amount_cents for p in overdue_payments)
+
+    # Detalhamento mês a mês dos 12 meses do ano
+    monthly_map: dict[int, dict[str, int]] = {
+        m: {"total_cents": 0, "paid_cents": 0, "pending_cents": 0} for m in range(1, 13)
+    }
+    for p in payments:
+        try:
+            p_month = int(p.due_date.split("-")[1])
+            if 1 <= p_month <= 12:
+                monthly_map[p_month]["total_cents"] += p.amount_cents
+                if p.status == "CONCLUIDO":
+                    monthly_map[p_month]["paid_cents"] += p.amount_cents
+                elif p.status == "PENDENTE":
+                    monthly_map[p_month]["pending_cents"] += p.amount_cents
+        except (IndexError, ValueError):
+            continue
+
+    monthly_breakdown = [
+        MonthlySpending(
+            month=m,
+            month_name=MONTH_NAMES[m - 1],
+            total_cents=monthly_map[m]["total_cents"],
+            paid_cents=monthly_map[m]["paid_cents"],
+            pending_cents=monthly_map[m]["pending_cents"],
+        )
+        for m in range(1, 13)
+    ]
 
     # Agrupamento por categoria
     category_map: dict[str, dict] = {}
@@ -114,7 +159,7 @@ async def get_dashboard_metrics(
         .where(
             Payment.user_id == user_id,
             Payment.status == "PENDENTE",
-            Payment.due_date >= today_str
+            Payment.due_date >= today_str,
         )
         .order_by(Payment.due_date.asc())
         .limit(7)
@@ -139,11 +184,14 @@ async def get_dashboard_metrics(
 
     return DashboardMetrics(
         period=period,
+        year=target_year,
         total_expenses_cents=total_expenses_cents,
         total_paid_cents=total_paid_cents,
         total_pending_cents=total_pending_cents,
         total_overdue_cents=total_overdue_cents,
+        monthly_breakdown=monthly_breakdown,
         by_category=by_category,
         by_essentiality=by_essentiality,
         upcoming_payments=upcoming_payments,
     )
+

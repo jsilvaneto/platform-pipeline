@@ -6,8 +6,10 @@ from app.services.expense_service import _add_months
 from app.schemas.expense import ExpenseCreate
 from app.schemas.category import CategoryCreate
 from app.schemas.payment_method import PaymentMethodCreate
+from app.schemas.dashboard import DashboardMetrics, MonthlySpending
 
 class TestFinancialDomainLogic(unittest.TestCase):
+
     """Testes unitários para regras de negócio do domínio financeiro Wallet."""
 
     def test_add_months_regular(self):
@@ -115,5 +117,42 @@ class TestFinancialDomainLogic(unittest.TestCase):
         with self.assertRaises(ValidationError):
             PaymentMethodCreate(name="Cartão Fake", type="TIPO_INEXISTENTE")
 
+    def test_monthly_spending_schema(self):
+        """Valida schema de detalhamento mensal."""
+        month_data = MonthlySpending(
+            month=5,
+            month_name="Mai",
+            total_cents=15000,
+            paid_cents=10000,
+            pending_cents=5000,
+        )
+        self.assertEqual(month_data.month, 5)
+        self.assertEqual(month_data.month_name, "Mai")
+        self.assertEqual(month_data.total_cents, 15000)
+
+        with self.assertRaises(ValidationError):
+            MonthlySpending(month=13, month_name="Invalid")
+
+    def test_dashboard_metrics_annual_schema(self):
+        """Valida schema de métricas com dados anuais e quebra mensal."""
+        metrics = DashboardMetrics(
+            period="2026",
+            year=2026,
+            total_expenses_cents=100000,
+            total_paid_cents=60000,
+            total_pending_cents=40000,
+            total_overdue_cents=0,
+            monthly_breakdown=[
+                MonthlySpending(month=1, month_name="Jan", total_cents=100000, paid_cents=60000, pending_cents=40000)
+            ],
+            by_category=[],
+            by_essentiality=[],
+            upcoming_payments=[],
+        )
+        self.assertEqual(metrics.year, 2026)
+        self.assertEqual(metrics.period, "2026")
+        self.assertEqual(len(metrics.monthly_breakdown), 1)
+
 if __name__ == "__main__":
     unittest.main()
+

@@ -91,12 +91,13 @@ export const walletApi = {
   },
 
   // Dashboard
-  async getDashboardMetrics(month?: string): Promise<DashboardMetrics> {
+  async getDashboardMetrics(params?: { year?: number; month?: string }): Promise<DashboardMetrics> {
     const { data } = await api.get<DashboardMetrics>("/dashboard/metrics", {
-      params: month ? { month } : undefined,
+      params,
     });
     return data;
   },
+
 
   // Usuários (Gestão de Acesso)
   async getUsers(): Promise<User[]> {

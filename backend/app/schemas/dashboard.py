@@ -24,12 +24,22 @@ class UpcomingPayment(BaseModel):
     color: str
     status: str
 
+class MonthlySpending(BaseModel):
+    month: int = Field(..., ge=1, le=12, description="Número do mês (1-12)")
+    month_name: str = Field(..., description="Nome abreviado do mês (Jan, Fev, etc.)")
+    total_cents: int = Field(default=0, description="Total de despesas do mês em centavos")
+    paid_cents: int = Field(default=0, description="Total pago do mês em centavos")
+    pending_cents: int = Field(default=0, description="Total a pagar do mês em centavos")
+
 class DashboardMetrics(BaseModel):
-    period: str = Field(..., description="Mês de referência (YYYY-MM)")
-    total_expenses_cents: int = Field(default=0, description="Total geral de despesas do mês em centavos")
-    total_paid_cents: int = Field(default=0, description="Total já liquidado/pago no mês em centavos")
-    total_pending_cents: int = Field(default=0, description="Total a pagar no mês em centavos")
+    period: str = Field(..., description="Período de referência (Ano ou Ano-Mês)")
+    year: int = Field(..., description="Ano de referência (ex: 2026)")
+    total_expenses_cents: int = Field(default=0, description="Total geral de despesas do período em centavos")
+    total_paid_cents: int = Field(default=0, description="Total já liquidado/pago no período em centavos")
+    total_pending_cents: int = Field(default=0, description="Total a pagar no período em centavos")
     total_overdue_cents: int = Field(default=0, description="Total vencido e não pago em centavos")
+    monthly_breakdown: list[MonthlySpending] = []
     by_category: list[CategorySpending] = []
     by_essentiality: list[EssentialitySpending] = []
     upcoming_payments: list[UpcomingPayment] = []
+
