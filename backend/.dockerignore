@@ -1,0 +1,12 @@
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+*.log
+scratch/
