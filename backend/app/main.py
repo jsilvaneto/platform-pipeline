@@ -53,6 +53,7 @@ app.add_middleware(
 app.include_router(api_router)
 
 @app.get("/api/health", tags=["Sistema"])
+@app.get("/api/v1/health", tags=["Sistema"])
 async def health_check():
     """Endpoint de verificação de saúde da aplicação e conectividade com o banco."""
     db_status = "connected"

@@ -7,6 +7,11 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100)
     is_admin: bool = False
 
+class UserUpdate(BaseModel):
+    password: str | None = Field(default=None, min_length=6, max_length=100)
+    is_admin: bool | None = None
+    is_active: bool | None = None
+
 class UserResponse(UserBase):
     id: str
     is_active: bool

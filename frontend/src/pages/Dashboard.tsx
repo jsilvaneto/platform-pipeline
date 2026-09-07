@@ -13,7 +13,6 @@ import {
   PieChart,
   ShieldCheck,
   CreditCard,
-  Loader2,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import { api } from "../api/client";
@@ -22,7 +21,7 @@ import { formatCurrency, formatDate } from "../utils/format";
 import { useAuth } from "../context/AuthContext";
 
 interface DashboardProps {
-  onNavigateToExpenses: () => void;
+  onNavigateToRegistros: () => void;
   onOpenNewExpenseModal: () => void;
 }
 
@@ -57,7 +56,7 @@ const ESSENTIALITY_NAME_MAP: Record<string, { label: string; desc: string; color
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({
-  onNavigateToExpenses,
+  onNavigateToRegistros,
   onOpenNewExpenseModal,
 }) => {
   const { user } = useAuth();
@@ -280,7 +279,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span>Despesas por Categoria</span>
             </h3>
             <button
-              onClick={onNavigateToExpenses}
+              onClick={onNavigateToRegistros}
               className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center space-x-1"
             >
               <span>Ver detalhes</span>
@@ -400,10 +399,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span>Próximos Vencimentos a Pagar</span>
             </h3>
             <button
-              onClick={onNavigateToExpenses}
+              onClick={onNavigateToRegistros}
               className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center space-x-1"
             >
-              <span>Gerenciar despesas</span>
+              <span>Ver todos os registros</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>

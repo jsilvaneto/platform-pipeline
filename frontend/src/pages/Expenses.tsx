@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Filter,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -257,10 +256,10 @@ export const Expenses: React.FC<ExpensesProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Despesas & Pagamentos
+            Registros
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Controle e liquidação de contas, despesas à vista e compras parceladas
+            Controle de despesas, contas a pagar e compras parceladas
           </p>
         </div>
 
@@ -286,13 +285,13 @@ export const Expenses: React.FC<ExpensesProps> = ({
             </button>
           </div>
 
-          {/* Botão Nova Despesa */}
+          {/* Botão Novo Registro */}
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-sm shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
-            <span>Nova Despesa</span>
+            <span>Novo Registro</span>
           </button>
         </div>
       </div>

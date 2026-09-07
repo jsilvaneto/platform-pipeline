@@ -1,4 +1,4 @@
-from app.schemas.user import UserCreate, UserResponse, Token, TokenData
+from app.schemas.user import UserCreate, UserUpdate, UserResponse, Token, TokenData
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodUpdate, PaymentMethodResponse
 from app.schemas.payment import PaymentResponse, PaymentStatusUpdate
@@ -7,6 +7,7 @@ from app.schemas.dashboard import DashboardMetrics, CategorySpending, Essentiali
 
 __all__ = [
     "UserCreate",
+    "UserUpdate",
     "UserResponse",
     "Token",
     "TokenData",

@@ -4,15 +4,15 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Expenses } from "./pages/Expenses";
-import { Categories } from "./pages/Categories";
+import { Settings } from "./pages/Settings";
 import { Layout } from "./components/Layout";
-import { NavTab } from "./components/Header";
+import { NavTab } from "./types";
 import { Loader2 } from "lucide-react";
 import "./App.css";
 
 const MainApp: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
-  const [currentTab, setCurrentTab] = useState<NavTab>("dashboard");
+  const [currentTab, setCurrentTab] = useState<NavTab>("inicio");
   const [isExpenseModalRequested, setIsExpenseModalRequested] = useState<boolean>(false);
 
   if (isLoading) {
@@ -34,22 +34,22 @@ const MainApp: React.FC = () => {
 
   return (
     <Layout currentTab={currentTab} onSelectTab={setCurrentTab}>
-      {currentTab === "dashboard" && (
+      {currentTab === "inicio" && (
         <Dashboard
-          onNavigateToExpenses={() => setCurrentTab("expenses")}
+          onNavigateToRegistros={() => setCurrentTab("registros")}
           onOpenNewExpenseModal={() => {
-            setCurrentTab("expenses");
+            setCurrentTab("registros");
             setIsExpenseModalRequested(true);
           }}
         />
       )}
-      {currentTab === "expenses" && (
+      {currentTab === "registros" && (
         <Expenses
           isCreateModalOpenExternal={isExpenseModalRequested}
           onCloseCreateModalExternal={() => setIsExpenseModalRequested(false)}
         />
       )}
-      {currentTab === "categories" && <Categories />}
+      {currentTab === "configuracoes" && <Settings />}
     </Layout>
   );
 };

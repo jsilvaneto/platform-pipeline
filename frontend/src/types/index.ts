@@ -10,12 +10,26 @@ export type PaymentMethodType =
   | "BOLETO"
   | "OUTRO";
 
+export type NavTab = "inicio" | "registros" | "configuracoes";
+
 export interface User {
   id: string;
   username: string;
   is_active: boolean;
   is_admin: boolean;
   created_at: string;
+}
+
+export interface UserCreateInput {
+  username: string;
+  password: string;
+  is_admin?: boolean;
+}
+
+export interface UserUpdateInput {
+  password?: string;
+  is_admin?: boolean;
+  is_active?: boolean;
 }
 
 export interface AuthResponse {

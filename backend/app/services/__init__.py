@@ -3,6 +3,7 @@ from app.services import payment_method_service
 from app.services import expense_service
 from app.services import payment_service
 from app.services import dashboard_service
+from app.services import user_service
 
 __all__ = [
     "category_service",
@@ -10,4 +11,5 @@ __all__ = [
     "expense_service",
     "payment_service",
     "dashboard_service",
+    "user_service",
 ]
