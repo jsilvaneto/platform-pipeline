@@ -27,7 +27,6 @@ interface SidebarProps {
 interface NavItem {
   id: NavTab;
   label: string;
-  sublabel: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
@@ -35,19 +34,16 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "inicio",
     label: "Início",
-    sublabel: "Visão Geral & KPIs",
     icon: LayoutDashboard,
   },
   {
     id: "registros",
     label: "Registros",
-    sublabel: "Despesas & Pagamentos",
     icon: Wallet,
   },
   {
     id: "configuracoes",
     label: "Configurações",
-    sublabel: "Categorias, Meios & Usuários",
     icon: Settings,
   },
 ];
@@ -104,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="font-bold text-lg text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
                   Wallet
                 </span>
-                <span className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 leading-tight">
+                <span className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 leading-tight mt-0.5">
                   Finanças Pessoais
                 </span>
               </div>
@@ -145,35 +141,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center rounded-2xl transition-all duration-200 group relative ${
+                className={`w-full flex items-center rounded-xl transition-all duration-150 group ${
                   isCollapsed && !isMobileOpen
                     ? "justify-center p-3"
-                    : "space-x-3 px-3.5 py-3"
+                    : "space-x-3 px-3.5 py-2.5"
                 } ${
                   isActive
-                    ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs"
-                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 font-medium"
+                    ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 font-medium"
                 }`}
                 title={isCollapsed && !isMobileOpen ? item.label : undefined}
               >
                 <Icon
-                  className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
+                  className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-105 ${
                     isActive ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-500 dark:text-zinc-400"
                   }`}
                 />
 
                 {(!isCollapsed || isMobileOpen) && (
-                  <div className="flex flex-col text-left truncate">
-                    <span className="text-sm leading-tight">{item.label}</span>
-                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal truncate">
-                      {item.sublabel}
-                    </span>
-                  </div>
-                )}
-
-                {/* Indicador de item ativo */}
-                {isActive && (
-                  <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-600 dark:bg-indigo-400 rounded-r-full" />
+                  <span className="text-sm font-medium leading-none truncate">
+                    {item.label}
+                  </span>
                 )}
               </button>
             );
