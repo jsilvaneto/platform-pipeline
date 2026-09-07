@@ -1,13 +1,29 @@
 from app.schemas.user import UserCreate, UserResponse, Token, TokenData
-from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemFilter
+from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
+from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodUpdate, PaymentMethodResponse
+from app.schemas.payment import PaymentResponse, PaymentStatusUpdate
+from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseFilter
+from app.schemas.dashboard import DashboardMetrics, CategorySpending, EssentialitySpending, UpcomingPayment
 
 __all__ = [
     "UserCreate",
     "UserResponse",
     "Token",
     "TokenData",
-    "ItemCreate",
-    "ItemUpdate",
-    "ItemResponse",
-    "ItemFilter",
+    "CategoryCreate",
+    "CategoryUpdate",
+    "CategoryResponse",
+    "PaymentMethodCreate",
+    "PaymentMethodUpdate",
+    "PaymentMethodResponse",
+    "PaymentResponse",
+    "PaymentStatusUpdate",
+    "ExpenseCreate",
+    "ExpenseUpdate",
+    "ExpenseResponse",
+    "ExpenseFilter",
+    "DashboardMetrics",
+    "CategorySpending",
+    "EssentialitySpending",
+    "UpcomingPayment",
 ]

@@ -1,0 +1,829 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Plus,
+  Filter,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  Clock,
+  Trash2,
+  AlertCircle,
+  Repeat,
+  CreditCard,
+  Tag,
+  Loader2,
+} from "lucide-react";
+import { walletApi } from "../api/walletApi";
+import { Modal } from "../components/Modal";
+import {
+  Expense,
+  Category,
+  PaymentMethod,
+  ExpenseCreateInput,
+  EssentialityType,
+  ExpenseStatus,
+} from "../types";
+import { formatCurrency, formatDate } from "../utils/format";
+
+interface ExpensesProps {
+  isCreateModalOpenExternal?: boolean;
+  onCloseCreateModalExternal?: () => void;
+}
+
+const ESSENTIALITY_LABELS: Record<EssentialityType, { label: string; color: string }> = {
+  OBRIGATORIO: {
+    label: "Obrigatório",
+    color: "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
+  },
+  NECESSARIO: {
+    label: "Necessário",
+    color: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+  },
+  DESEJO: {
+    label: "Desejo",
+    color: "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+  },
+  NENHUM: {
+    label: "Geral",
+    color: "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
+  },
+};
+
+export const Expenses: React.FC<ExpensesProps> = ({
+  isCreateModalOpenExternal = false,
+  onCloseCreateModalExternal,
+}) => {
+  const today = new Date();
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
+  const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "ALL">("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [essentialityFilter, setEssentialityFilter] = useState<EssentialityType | "ALL">("ALL");
+
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [expandedExpenseIds, setExpandedExpenseIds] = useState<Set<string>>(new Set());
+
+  // Form states
+  const [formDescription, setFormDescription] = useState<string>("");
+  const [formAmountStr, setFormAmountStr] = useState<string>("");
+  const [formIssueDate, setFormIssueDate] = useState<string>(today.toISOString().split("T")[0]);
+  const [formDueDate, setFormDueDate] = useState<string>(today.toISOString().split("T")[0]);
+  const [formCategoryId, setFormCategoryId] = useState<string>("");
+  const [formPaymentMethodId, setFormPaymentMethodId] = useState<string>("");
+  const [formEssentiality, setFormEssentiality] = useState<EssentialityType>("NECESSARIO");
+  const [formInstallments, setFormInstallments] = useState<number>(1);
+  const [formIsRecurring, setFormIsRecurring] = useState<boolean>(false);
+  const [formNotes, setFormNotes] = useState<string>("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Sincroniza abertura de modal disparada de fora (ex: atalhos do Dashboard)
+  useEffect(() => {
+    if (isCreateModalOpenExternal) {
+      setIsModalOpen(true);
+    }
+  }, [isCreateModalOpenExternal]);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [expData, catData, pmData] = await Promise.all([
+        walletApi.getExpenses({
+          month: selectedMonth,
+          status: statusFilter !== "ALL" ? statusFilter : undefined,
+          category_id: categoryFilter !== "ALL" ? categoryFilter : undefined,
+          essentiality: essentialityFilter !== "ALL" ? essentialityFilter : undefined,
+        }),
+        walletApi.getCategories(),
+        walletApi.getPaymentMethods(),
+      ]);
+      setExpenses(expData);
+      setCategories(catData);
+      setPaymentMethods(pmData);
+
+      if (catData.length > 0 && !formCategoryId) {
+        setFormCategoryId(catData[0].id);
+      }
+      if (pmData.length > 0 && !formPaymentMethodId) {
+        setFormPaymentMethodId(pmData[0].id);
+      }
+    } catch (err: unknown) {
+      setError("Não foi possível carregar as despesas. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedMonth, statusFilter, categoryFilter, essentialityFilter]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handlePrevMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const prevDate = new Date(y, m - 2, 1);
+    setSelectedMonth(`${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const handleNextMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const nextDate = new Date(y, m, 1);
+    setSelectedMonth(`${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const toggleExpand = (expenseId: string) => {
+    setExpandedExpenseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(expenseId)) {
+        next.delete(expenseId);
+      } else {
+        next.add(expenseId);
+      }
+      return next;
+    });
+  };
+
+  const handleTogglePaymentStatus = async (
+    paymentId: string,
+    currentStatus: ExpenseStatus
+  ) => {
+    const newStatus: ExpenseStatus = currentStatus === "CONCLUIDO" ? "PENDENTE" : "CONCLUIDO";
+    try {
+      await walletApi.updatePaymentStatus(paymentId, { status: newStatus });
+      loadData();
+    } catch {
+      alert("Erro ao alterar o status do pagamento.");
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string, description: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir a despesa "${description}" e todas as suas parcelas?`)) {
+      return;
+    }
+    try {
+      await walletApi.deleteExpense(expenseId);
+      loadData();
+    } catch {
+      alert("Erro ao excluir a despesa.");
+    }
+  };
+
+  // Conversão segura de texto monetário para centavos inteiros
+  const parseAmountToCents = (valStr: string): number => {
+    const cleanStr = valStr.replace(/[^\d,.-]/g, "").replace(",", ".");
+    const valFloat = parseFloat(cleanStr);
+    if (isNaN(valFloat) || valFloat <= 0) return 0;
+    return Math.round(valFloat * 100);
+  };
+
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+
+    const amountCents = parseAmountToCents(formAmountStr);
+    if (amountCents <= 0) {
+      setFormError("Informe um valor monetário válido maior que zero.");
+      return;
+    }
+    if (!formDescription.trim()) {
+      setFormError("A descrição da despesa é obrigatória.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload: ExpenseCreateInput = {
+        description: formDescription.trim(),
+        total_amount_cents: amountCents,
+        issue_date: formIssueDate,
+        due_date: formDueDate,
+        category_id: formCategoryId || null,
+        payment_method_id: formPaymentMethodId || null,
+        essentiality: formEssentiality,
+        status: "PENDENTE",
+        installments_count: formInstallments,
+        is_recurring: formIsRecurring,
+        notes: formNotes.trim() || null,
+      };
+
+      await walletApi.createExpense(payload);
+      setIsModalOpen(false);
+      if (onCloseCreateModalExternal) {
+        onCloseCreateModalExternal();
+      }
+      // Limpa formulário
+      setFormDescription("");
+      setFormAmountStr("");
+      setFormInstallments(1);
+      setFormIsRecurring(false);
+      setFormNotes("");
+      loadData();
+    } catch (err: unknown) {
+      setFormError("Erro ao salvar a despesa. Verifique os campos informados.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Totais do mês calculado a partir das parcelas do mês
+  const currentMonthPayments = expenses.flatMap((exp) =>
+    exp.payments.filter((p) => p.due_date.startsWith(selectedMonth))
+  );
+  const totalExpensesCents = currentMonthPayments.reduce((acc, p) => acc + p.amount_cents, 0);
+  const totalPaidCents = currentMonthPayments
+    .filter((p) => p.status === "CONCLUIDO")
+    .reduce((acc, p) => acc + p.amount_cents, 0);
+  const totalPendingCents = currentMonthPayments
+    .filter((p) => p.status === "PENDENTE")
+    .reduce((acc, p) => acc + p.amount_cents, 0);
+
+  const [yearNum, monthNum] = selectedMonth.split("-").map(Number);
+  const monthDate = new Date(yearNum, monthNum - 1, 1);
+  const monthFormatted = monthDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  return (
+    <div className="space-y-6">
+      {/* Top Header & Month Selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            Despesas & Pagamentos
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Controle e liquidação de contas, despesas à vista e compras parceladas
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          {/* Navegador de Mês */}
+          <div className="flex items-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-1 shadow-sm">
+            <button
+              onClick={handlePrevMonth}
+              className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+              title="Mês Anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-3 text-sm font-semibold capitalize text-zinc-800 dark:text-zinc-200 min-w-[130px] text-center">
+              {monthFormatted}
+            </span>
+            <button
+              onClick={handleNextMonth}
+              className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+              title="Próximo Mês"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Botão Nova Despesa */}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-sm shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nova Despesa</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Cards de Resumo Mensal */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            Total Previsto no Mês
+          </span>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {formatCurrency(totalExpensesCents)}
+          </p>
+          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 block">
+            {currentMonthPayments.length} parcelas/lançamentos
+          </span>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+          <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center space-x-1">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Total Já Pago</span>
+          </span>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+            {formatCurrency(totalPaidCents)}
+          </p>
+          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 block">
+            {totalExpensesCents > 0
+              ? `${Math.round((totalPaidCents / totalExpensesCents) * 100)}% quitado`
+              : "Nenhum valor no mês"}
+          </span>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+          <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center space-x-1">
+            <Clock className="w-3.5 h-3.5" />
+            <span>A Pagar (Pendente)</span>
+          </span>
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">
+            {formatCurrency(totalPendingCents)}
+          </p>
+          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 block">
+            {currentMonthPayments.filter((p) => p.status === "PENDENTE").length} pendências no mês
+          </span>
+        </div>
+      </div>
+
+      {/* Barra de Filtros */}
+      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center space-x-2 text-zinc-500 dark:text-zinc-400 text-sm font-medium">
+            <Filter className="w-4 h-4" />
+            <span>Filtros:</span>
+          </div>
+
+          {/* Filtro Status */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ExpenseStatus | "ALL")}
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="ALL">Status: Todos</option>
+            <option value="PENDENTE">Apenas Pendentes</option>
+            <option value="CONCLUIDO">Apenas Concluídos</option>
+          </select>
+
+          {/* Filtro Categoria */}
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="ALL">Categoria: Todas</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Filtro Essencialidade */}
+          <select
+            value={essentialityFilter}
+            onChange={(e) => setEssentialityFilter(e.target.value as EssentialityType | "ALL")}
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="ALL">Essencialidade: Todas</option>
+            <option value="OBRIGATORIO">Obrigatório</option>
+            <option value="NECESSARIO">Necessário</option>
+            <option value="DESEJO">Desejo</option>
+            <option value="NENHUM">Geral</option>
+          </select>
+        </div>
+
+        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+          {expenses.length} {expenses.length === 1 ? "despesa encontrada" : "despesas encontradas"}
+        </span>
+      </div>
+
+      {/* Lista de Despesas */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
+          <span className="text-sm text-zinc-500 dark:text-zinc-400">Carregando despesas...</span>
+        </div>
+      ) : error ? (
+        <div className="p-6 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl text-center">
+          <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
+          <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{error}</p>
+        </div>
+      ) : expenses.length === 0 ? (
+        <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4 text-zinc-400">
+            <CreditCard className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            Nenhuma despesa registrada para este período
+          </h3>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 max-w-md mx-auto">
+            Organize suas despesas, contas de consumo e compras parceladas clicando no botão abaixo.
+          </p>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="mt-5 inline-flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Adicionar Primeira Despesa</span>
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {expenses.map((expense) => {
+            const isExpanded = expandedExpenseIds.has(expense.id);
+            const isParcelado = expense.installments_count > 1;
+            const essentialityCfg = ESSENTIALITY_LABELS[expense.essentiality];
+
+            // Parcela relevante do mês selecionado
+            const currentInstallment = expense.payments.find((p) =>
+              p.due_date.startsWith(selectedMonth)
+            );
+            const singlePayment = expense.payments[0];
+
+            return (
+              <div
+                key={expense.id}
+                className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+              >
+                {/* Linha Principal da Despesa */}
+                <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start space-x-3.5">
+                    {/* Indicador de Categoria com Cor */}
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white font-bold text-sm shadow-sm"
+                      style={{
+                        backgroundColor: expense.category?.color || "#6366f1",
+                      }}
+                    >
+                      <Tag className="w-5 h-5" />
+                    </div>
+
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">
+                          {expense.description}
+                        </h4>
+
+                        {/* Tag Essencialidade */}
+                        <span
+                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${essentialityCfg.color}`}
+                        >
+                          {essentialityCfg.label}
+                        </span>
+
+                        {/* Tag Recorrência */}
+                        {expense.is_recurring && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center space-x-0.5">
+                            <Repeat className="w-2.5 h-2.5 inline mr-0.5" />
+                            Recorrente
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Metadados: Categoria, Forma de Pagamento, Data */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                        <span>{expense.category?.name || "Sem categoria"}</span>
+                        <span>&bull;</span>
+                        <span>{expense.payment_method?.name || "Meio não especificado"}</span>
+                        <span>&bull;</span>
+                        <span>Vencimento: {formatDate(expense.due_date)}</span>
+                        {isParcelado && (
+                          <>
+                            <span>&bull;</span>
+                            <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                              {expense.installments_count} parcelas
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {expense.notes && (
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 italic mt-1">
+                          "{expense.notes}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Lado Direito: Valores, Status e Ações */}
+                  <div className="flex items-center justify-between sm:justify-end space-x-4 pl-13 sm:pl-0">
+                    <div className="text-right">
+                      <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 block">
+                        {isParcelado && currentInstallment
+                          ? formatCurrency(currentInstallment.amount_cents)
+                          : formatCurrency(expense.total_amount_cents)}
+                      </span>
+                      {isParcelado && (
+                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block">
+                          Total: {formatCurrency(expense.total_amount_cents)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Ação Rápida de Pagamento para 1x ou Detalhes para Parcelas */}
+                    {!isParcelado && singlePayment ? (
+                      <button
+                        onClick={() =>
+                          handleTogglePaymentStatus(singlePayment.id, singlePayment.status)
+                        }
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
+                          singlePayment.status === "CONCLUIDO"
+                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200"
+                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-200"
+                        }`}
+                      >
+                        {singlePayment.status === "CONCLUIDO" ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Pago</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>Pagar</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => toggleExpand(expense.id)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center space-x-1"
+                      >
+                        <span>Parcelas</span>
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
+
+                    {/* Excluir Despesa */}
+                    <button
+                      onClick={() => handleDeleteExpense(expense.id, expense.description)}
+                      className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                      title="Excluir despesa"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-tabela de Parcelas (Quando expandido) */}
+                {isParcelado && isExpanded && (
+                  <div className="bg-zinc-50/80 dark:bg-zinc-950/50 border-t border-zinc-200 dark:border-zinc-800 px-5 py-3 space-y-2">
+                    <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-2">
+                      Detalhamento de Parcelas
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                      {expense.payments.map((p) => (
+                        <div
+                          key={p.id}
+                          className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-2xs"
+                        >
+                          <div>
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
+                              Parcela {p.installment_number}/{expense.installments_count}
+                            </span>
+                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                              Vence em: {formatDate(p.due_date)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                              {formatCurrency(p.amount_cents)}
+                            </span>
+                            <button
+                              onClick={() => handleTogglePaymentStatus(p.id, p.status)}
+                              className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                p.status === "CONCLUIDO"
+                                  ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-amber-100 hover:text-amber-700"
+                              }`}
+                              title={p.status === "CONCLUIDO" ? "Desmarcar pagamento" : "Marcar como pago"}
+                            >
+                              <CheckCircle2
+                                className={`w-4 h-4 ${
+                                  p.status === "CONCLUIDO"
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-zinc-400"
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal Nova Despesa */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          if (onCloseCreateModalExternal) {
+            onCloseCreateModalExternal();
+          }
+        }}
+        title="Cadastrar Nova Despesa"
+        maxWidth="lg"
+      >
+        <form onSubmit={handleCreateExpense} className="space-y-4">
+          {formError && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-700 dark:text-rose-300">
+              {formError}
+            </div>
+          )}
+
+          {/* Descrição */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Descrição da Despesa *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Supermercado Mensal, Aluguel, Farmácia"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Valor Total e Parcelamento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Valor Total (R$) *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="0,00"
+                value={formAmountStr}
+                onChange={(e) => setFormAmountStr(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Parcelamento
+              </label>
+              <select
+                value={formInstallments}
+                onChange={(e) => setFormInstallments(Number(e.target.value))}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value={1}>À vista (1x)</option>
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24].map((n) => (
+                  <option key={n} value={n}>
+                    Parcelado em {n}x
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Datas: Realização e Vencimento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Data da Despesa *
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  required
+                  value={formIssueDate}
+                  onChange={(e) => setFormIssueDate(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Data de Vencimento (1ª Parcela) *
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  required
+                  value={formDueDate}
+                  onChange={(e) => setFormDueDate(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Categoria e Forma de Pagamento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Categoria de Despesa
+              </label>
+              <select
+                value={formCategoryId}
+                onChange={(e) => setFormCategoryId(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Forma de Pagamento
+              </label>
+              <select
+                value={formPaymentMethodId}
+                onChange={(e) => setFormPaymentMethodId(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {paymentMethods.map((pm) => (
+                  <option key={pm.id} value={pm.id}>
+                    {pm.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Essencialidade e Recorrência */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Grau de Essencialidade
+              </label>
+              <select
+                value={formEssentiality}
+                onChange={(e) => setFormEssentiality(e.target.value as EssentialityType)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="OBRIGATORIO">Obrigatório (Sobrevivência, Aluguel, Luz)</option>
+                <option value="NECESSARIO">Necessário (Alimentação, Transporte)</option>
+                <option value="DESEJO">Desejo (Lazer, Restaurantes, Viagens)</option>
+                <option value="NENHUM">Geral / Sem Classificação</option>
+              </select>
+            </div>
+
+            <div className="pt-4">
+              <label className="flex items-center space-x-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formIsRecurring}
+                  onChange={(e) => setFormIsRecurring(e.target.checked)}
+                  className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                />
+                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Despesa fixa mensal contínua
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Observações (Opcional)
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Detalhes adicionais, comprovante ou observações"
+              value={formNotes}
+              onChange={(e) => setFormNotes(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Botões do Rodapé */}
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>Salvar Despesa</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};

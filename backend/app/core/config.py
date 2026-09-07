@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Base Application"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    APP_NAME: str = "Wallet"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
     
@@ -33,9 +35,5 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 settings = Settings()
