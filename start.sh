@@ -77,7 +77,7 @@ if [ "$MODE" = "--dev" ] || [ "$MODE" = "dev" ]; then
     echo "================================================================="
     echo "  🚀 INICIANDO EM MODO DESENVOLVIMENTO DOCKER (HOT-RELOAD)..."
     echo "================================================================="
-    docker compose -f docker-compose.dev.yml up
+    docker compose -f docker-compose.dev.yml up --build
     exit 0
 fi
 
