@@ -20,6 +20,8 @@ import {
   RefreshCw,
   Cpu,
   Wallet,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import { Modal } from "../components/Modal";
@@ -90,6 +92,8 @@ export const Settings: React.FC = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState<string>("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState<string>("");
+  const [showResetPassword, setShowResetPassword] = useState<boolean>(false);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -275,15 +279,25 @@ export const Settings: React.FC = () => {
   const handleOpenPasswordModal = (userTarget: User) => {
     setSelectedUserForPassword(userTarget);
     setResetPasswordValue("");
+    setResetPasswordConfirm("");
+    setShowResetPassword(false);
     setIsPasswordModalOpen(true);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUserForPassword || resetPasswordValue.length < 6) {
+    if (!selectedUserForPassword) return;
+
+    if (resetPasswordValue.length < 6) {
       showFeedback("error", "A nova senha deve ter no mínimo 6 caracteres.");
       return;
     }
+
+    if (resetPasswordValue !== resetPasswordConfirm) {
+      showFeedback("error", "As senhas não coincidem. Digite a mesma senha em ambos os campos.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await walletApi.updateUser(selectedUserForPassword.id, {
@@ -291,8 +305,9 @@ export const Settings: React.FC = () => {
       });
       setIsPasswordModalOpen(false);
       setResetPasswordValue("");
+      setResetPasswordConfirm("");
       setSelectedUserForPassword(null);
-      showFeedback("success", "Senha redefinida com sucesso!");
+      showFeedback("success", `Senha do usuário "${selectedUserForPassword.username}" alterada com sucesso!`);
     } catch {
       showFeedback("error", "Erro ao redefinir senha do usuário.");
     } finally {
@@ -1089,28 +1104,79 @@ export const Settings: React.FC = () => {
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
               Nova Senha (mínimo 6 caracteres)
             </label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              value={resetPasswordValue}
-              onChange={(e) => setResetPasswordValue(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <input
+                type={showResetPassword ? "text" : "password"}
+                required
+                minLength={6}
+                placeholder="Digite a nova senha"
+                value={resetPasswordValue}
+                onChange={(e) => setResetPasswordValue(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowResetPassword(!showResetPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                title={showResetPassword ? "Ocultar senha" : "Exibir senha"}
+              >
+                {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Confirmar Nova Senha
+            </label>
+            <div className="relative">
+              <input
+                type={showResetPassword ? "text" : "password"}
+                required
+                minLength={6}
+                placeholder="Repita a nova senha"
+                value={resetPasswordConfirm}
+                onChange={(e) => setResetPasswordConfirm(e.target.value)}
+                className={`w-full bg-zinc-50 dark:bg-zinc-800 border rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 transition-all ${
+                  resetPasswordConfirm && resetPasswordValue !== resetPasswordConfirm
+                    ? "border-rose-400 dark:border-rose-600 focus:ring-rose-500"
+                    : "border-zinc-200 dark:border-zinc-700 focus:ring-blue-500"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowResetPassword(!showResetPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                title={showResetPassword ? "Ocultar senha" : "Exibir senha"}
+              >
+                {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {resetPasswordConfirm && resetPasswordValue !== resetPasswordConfirm && (
+              <span className="text-[11px] text-rose-500 font-medium mt-1 block">
+                As senhas não coincidem
+              </span>
+            )}
+            {resetPasswordConfirm && resetPasswordValue === resetPasswordConfirm && (
+              <span className="text-[11px] text-emerald-500 font-medium mt-1 flex items-center space-x-1">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Senhas coincidem</span>
+              </span>
+            )}
           </div>
 
           <div className="flex justify-end space-x-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
             <button
               type="button"
               onClick={() => setIsPasswordModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white"
+              disabled={isSubmitting || (resetPasswordValue.length >= 6 && resetPasswordValue !== resetPasswordConfirm)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? "Atualizando..." : "Salvar Nova Senha"}
             </button>

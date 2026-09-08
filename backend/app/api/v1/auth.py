@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.database import get_db
 from app.models.user import User
@@ -17,7 +17,8 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     """Autentica usuário e retorna token JWT Bearer."""
-    query = select(User).where(User.username == form_data.username)
+    normalized_username = form_data.username.strip().lower()
+    query = select(User).where(func.lower(User.username) == normalized_username)
     result = await db.execute(query)
     user = result.scalar_one_or_none()
 

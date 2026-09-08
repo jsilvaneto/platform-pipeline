@@ -39,8 +39,8 @@ export const Login: React.FC = () => {
 
     try {
       const params = new URLSearchParams();
-      params.append("username", username.trim());
-      params.append("password", password.trim());
+      params.append("username", username.trim().toLowerCase());
+      params.append("password", password);
 
       const res = await api.post<AuthResponse>("/auth/login", params, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -147,6 +147,9 @@ export const Login: React.FC = () => {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="Informe seu usuário"
                 className="w-full pl-10 pr-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950/60 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
               />
