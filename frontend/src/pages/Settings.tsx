@@ -22,6 +22,10 @@ import {
   Wallet,
   Eye,
   EyeOff,
+  Banknote,
+  QrCode,
+  FileText,
+  Pencil,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import { Modal } from "../components/Modal";
@@ -60,6 +64,72 @@ const PAYMENT_TYPE_LABELS: Record<PaymentMethodType, string> = {
   OUTRO: "Outro Meio",
 };
 
+const renderPaymentMethodTypeBadge = (type: PaymentMethodType) => {
+  switch (type) {
+    case "PIX":
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+          <QrCode className="w-3 h-3 mr-1 text-emerald-600 dark:text-emerald-400" />
+          <span>{PAYMENT_TYPE_LABELS.PIX}</span>
+        </span>
+      );
+    case "CARTAO_CREDITO":
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+          <CreditCard className="w-3 h-3 mr-1 text-blue-600 dark:text-blue-400" />
+          <span>{PAYMENT_TYPE_LABELS.CARTAO_CREDITO}</span>
+        </span>
+      );
+    case "CARTAO_DEBITO":
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-cyan-50 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800">
+          <CreditCard className="w-3 h-3 mr-1 text-cyan-600 dark:text-cyan-400" />
+          <span>{PAYMENT_TYPE_LABELS.CARTAO_DEBITO}</span>
+        </span>
+      );
+    case "DINHEIRO":
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+          <Banknote className="w-3 h-3 mr-1 text-amber-600 dark:text-amber-400" />
+          <span>{PAYMENT_TYPE_LABELS.DINHEIRO}</span>
+        </span>
+      );
+    case "BOLETO":
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+          <FileText className="w-3 h-3 mr-1 text-purple-600 dark:text-purple-400" />
+          <span>{PAYMENT_TYPE_LABELS.BOLETO}</span>
+        </span>
+      );
+    case "OUTRO":
+    default:
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700">
+          <Coins className="w-3 h-3 mr-1 text-zinc-500 dark:text-zinc-400" />
+          <span>{PAYMENT_TYPE_LABELS.OUTRO}</span>
+        </span>
+      );
+  }
+};
+
+const getPaymentMethodIcon = (type: PaymentMethodType) => {
+  switch (type) {
+    case "PIX":
+      return <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
+    case "CARTAO_CREDITO":
+      return <CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+    case "CARTAO_DEBITO":
+      return <CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />;
+    case "DINHEIRO":
+      return <Banknote className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+    case "BOLETO":
+      return <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+    case "OUTRO":
+    default:
+      return <Wallet className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />;
+  }
+};
+
 export const Settings: React.FC = () => {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<"categories" | "payment_methods" | "users" | "system">("categories");
@@ -77,10 +147,22 @@ export const Settings: React.FC = () => {
   const [newCatName, setNewCatName] = useState<string>("");
   const [newCatColor, setNewCatColor] = useState<string>("#2563eb");
 
+  // Modal Edit Category
+  const [isEditCatModalOpen, setIsEditCatModalOpen] = useState<boolean>(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editCatName, setEditCatName] = useState<string>("");
+  const [editCatColor, setEditCatColor] = useState<string>("#2563eb");
+
   // Modal Payment Method
   const [isPmModalOpen, setIsPmModalOpen] = useState<boolean>(false);
   const [newPmName, setNewPmName] = useState<string>("");
   const [newPmType, setNewPmType] = useState<PaymentMethodType>("CARTAO_CREDITO");
+
+  // Modal Edit Payment Method
+  const [isEditPmModalOpen, setIsEditPmModalOpen] = useState<boolean>(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [editPmName, setEditPmName] = useState<string>("");
+  const [editPmType, setEditPmType] = useState<PaymentMethodType>("CARTAO_CREDITO");
 
   // Modal New User
   const [isUserModalOpen, setIsUserModalOpen] = useState<boolean>(false);
@@ -178,6 +260,36 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handleOpenEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    setEditCatName(cat.name);
+    setEditCatColor(cat.color);
+    setIsEditCatModalOpen(true);
+  };
+
+  const handleUpdateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory || !editCatName.trim()) {
+      showFeedback("error", "O nome da categoria é obrigatório.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await walletApi.updateCategory(editingCategory.id, {
+        name: editCatName.trim(),
+        color: editCatColor,
+      });
+      setIsEditCatModalOpen(false);
+      setEditingCategory(null);
+      showFeedback("success", `Categoria "${editCatName.trim()}" atualizada com sucesso!`);
+      loadData();
+    } catch {
+      showFeedback("error", "Erro ao atualizar categoria.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteCategory = async (id: string, name: string) => {
     if (!window.confirm(`Deseja excluir a categoria "${name}"?`)) return;
     try {
@@ -206,6 +318,36 @@ export const Settings: React.FC = () => {
       loadData();
     } catch {
       showFeedback("error", "Erro ao criar forma de pagamento.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEditPaymentMethod = (pm: PaymentMethod) => {
+    setEditingPaymentMethod(pm);
+    setEditPmName(pm.name);
+    setEditPmType(pm.type);
+    setIsEditPmModalOpen(true);
+  };
+
+  const handleUpdatePaymentMethod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPaymentMethod || !editPmName.trim()) {
+      showFeedback("error", "O nome da forma de pagamento é obrigatório.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await walletApi.updatePaymentMethod(editingPaymentMethod.id, {
+        name: editPmName.trim(),
+        type: editPmType,
+      });
+      setIsEditPmModalOpen(false);
+      setEditingPaymentMethod(null);
+      showFeedback("success", `Forma de pagamento "${editPmName.trim()}" atualizada com sucesso!`);
+      loadData();
+    } catch {
+      showFeedback("error", "Erro ao atualizar forma de pagamento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -469,83 +611,147 @@ export const Settings: React.FC = () => {
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
         </div>
       ) : activeTab === "categories" ? (
-        /* Aba 1: Grid de Categorias */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-xs"
-            >
-              <div className="flex items-center space-x-3">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
-                  style={{ backgroundColor: cat.color }}
+        /* Aba 1: Tabela de Categorias */
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <th className="py-3.5 px-4">Categoria</th>
+                <th className="py-3.5 px-4">Cor Identificadora</th>
+                <th className="py-3.5 px-4">Data de Cadastro</th>
+                <th className="py-3.5 px-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
+              {categories.map((cat) => (
+                <tr
+                  key={cat.id}
+                  className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors"
                 >
-                  <Tag className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block">
-                    {cat.name}
-                  </span>
-                  <span className="text-[11px] text-zinc-400">
-                    Criada em {formatDate(cat.created_at)}
-                  </span>
-                </div>
-              </div>
+                  <td className="py-3.5 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs"
+                        style={{ backgroundColor: cat.color }}
+                      >
+                        <Tag className="w-4 h-4" />
+                      </div>
+                      <span>{cat.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full ring-1 ring-black/10 shrink-0"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span>{cat.color.toUpperCase()}</span>
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 text-zinc-400 dark:text-zinc-500">
+                    {formatDate(cat.created_at)}
+                  </td>
+                  <td className="py-3.5 px-4 text-right space-x-1">
+                    <button
+                      onClick={() => handleOpenEditCategory(cat)}
+                      className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      title="Editar Categoria"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                      className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      title="Excluir Categoria"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
 
-              <button
-                onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                title="Excluir Categoria"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-
-          {categories.length === 0 && (
-            <div className="col-span-full py-12 text-center text-zinc-400 text-sm">
-              Nenhuma categoria cadastrada ainda.
-            </div>
-          )}
+              {categories.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-zinc-400 dark:text-zinc-500">
+                    <Tag className="w-8 h-8 mx-auto mb-2 opacity-40 text-zinc-400" />
+                    <p className="font-semibold text-sm text-zinc-700 dark:text-zinc-300">
+                      Nenhuma categoria cadastrada
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      Clique no botão "+ Nova Categoria" acima para adicionar a primeira.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       ) : activeTab === "payment_methods" ? (
-        /* Aba 2: Formas de Pagamento */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {paymentMethods.map((pm) => (
-            <div
-              key={pm.id}
-              className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-xs"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block">
-                    {pm.name}
-                  </span>
-                  <span className="text-[11px] text-zinc-400 block">
-                    {PAYMENT_TYPE_LABELS[pm.type] || pm.type}
-                  </span>
-                </div>
-              </div>
+        /* Aba 2: Tabela de Formas de Pagamento */
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <th className="py-3.5 px-4">Forma de Pagamento</th>
+                <th className="py-3.5 px-4">Modalidade / Tipo</th>
+                <th className="py-3.5 px-4">Data de Cadastro</th>
+                <th className="py-3.5 px-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
+              {paymentMethods.map((pm) => (
+                <tr
+                  key={pm.id}
+                  className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors"
+                >
+                  <td className="py-3.5 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center shrink-0">
+                        {getPaymentMethodIcon(pm.type)}
+                      </div>
+                      <span>{pm.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    {renderPaymentMethodTypeBadge(pm.type)}
+                  </td>
+                  <td className="py-3.5 px-4 text-zinc-400 dark:text-zinc-500">
+                    {formatDate(pm.created_at)}
+                  </td>
+                  <td className="py-3.5 px-4 text-right space-x-1">
+                    <button
+                      onClick={() => handleOpenEditPaymentMethod(pm)}
+                      className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      title="Editar Forma de Pagamento"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePaymentMethod(pm.id, pm.name)}
+                      className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      title="Excluir Forma de Pagamento"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
 
-              <button
-                onClick={() => handleDeletePaymentMethod(pm.id, pm.name)}
-                className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                title="Excluir Forma de Pagamento"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-
-          {paymentMethods.length === 0 && (
-            <div className="col-span-full py-12 text-center text-zinc-400 text-sm">
-              Nenhuma forma de pagamento cadastrada.
-            </div>
-          )}
+              {paymentMethods.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-zinc-400 dark:text-zinc-500">
+                    <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-40 text-zinc-400" />
+                    <p className="font-semibold text-sm text-zinc-700 dark:text-zinc-300">
+                      Nenhuma forma de pagamento cadastrada
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      Clique no botão "+ Nova Forma de Pagamento" acima para adicionar a primeira.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       ) : activeTab === "users" ? (
         /* Aba 3: Gestão de Usuários */
@@ -1179,6 +1385,123 @@ export const Settings: React.FC = () => {
               className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? "Atualizando..." : "Salvar Nova Senha"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+      {/* Modal Editar Categoria */}
+      <Modal
+        isOpen={isEditCatModalOpen}
+        onClose={() => setIsEditCatModalOpen(false)}
+        title={`Editar Categoria: ${editingCategory?.name || ""}`}
+        maxWidth="sm"
+      >
+        <form onSubmit={handleUpdateCategory} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Nome da Categoria
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="ex: Alimentação, Moradia, Lazer"
+              value={editCatName}
+              onChange={(e) => setEditCatName(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Cor de Identificação
+            </label>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {COLOR_PRESETS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setEditCatColor(color)}
+                  style={{ backgroundColor: color }}
+                  className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
+                    editCatColor === color ? "scale-125 ring-2 ring-blue-500 ring-offset-2" : ""
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsEditCatModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Editar Forma de Pagamento */}
+      <Modal
+        isOpen={isEditPmModalOpen}
+        onClose={() => setIsEditPmModalOpen(false)}
+        title={`Editar Forma de Pagamento: ${editingPaymentMethod?.name || ""}`}
+        maxWidth="sm"
+      >
+        <form onSubmit={handleUpdatePaymentMethod} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Identificação do Meio
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="ex: Cartão Nubank, Conta Itaú, Carteira Dinheiro"
+              value={editPmName}
+              onChange={(e) => setEditPmName(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Tipo da Operação
+            </label>
+            <select
+              value={editPmType}
+              onChange={(e) => setEditPmType(e.target.value as PaymentMethodType)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {Object.entries(PAYMENT_TYPE_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsEditPmModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
             </button>
           </div>
         </form>
