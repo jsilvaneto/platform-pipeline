@@ -11,6 +11,11 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
 fi
 
 VERSION=$(cat "$PROJECT_ROOT/VERSION" 2>/dev/null | tr -d ' \r\n' || echo "1.0.0")
+
+# Sincroniza arquivos de versionamento para o backend (acesso nativo e docker)
+cp "$PROJECT_ROOT/VERSION" "$PROJECT_ROOT/backend/VERSION" 2>/dev/null || true
+cp "$PROJECT_ROOT/CHANGELOG.md" "$PROJECT_ROOT/backend/CHANGELOG.md" 2>/dev/null || true
+
 MODE="${1:-prod}"
 
 # 1. Encerramento de containers

@@ -1,10 +1,35 @@
+import os
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _resolve_app_version() -> str:
+    """Resolve a versão da aplicação priorizando env, arquivo VERSION ou fallback seguro."""
+    env_ver = os.getenv("APP_VERSION")
+    if env_ver and env_ver.strip():
+        return env_ver.strip()
+
+    candidate_paths = [
+        Path(__file__).resolve().parents[2] / "VERSION",  # backend/VERSION
+        Path(__file__).resolve().parents[3] / "VERSION",  # project_root/VERSION
+        Path("/app/VERSION"),
+    ]
+    for path in candidate_paths:
+        if path.is_file():
+            try:
+                content = path.read_text(encoding="utf-8").strip()
+                if content:
+                    return content
+            except Exception:
+                pass
+    return "1.0.1"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     APP_NAME: str = "Wallet"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = _resolve_app_version()
     ENVIRONMENT: str = "development"
     
     # Segurança & JWT

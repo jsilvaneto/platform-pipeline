@@ -26,9 +26,13 @@ import {
   QrCode,
   FileText,
   Pencil,
+  Sparkles,
+  Calendar,
+  Wrench,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import { Modal } from "../components/Modal";
+import { ChangelogModal } from "../components/ChangelogModal";
 import { useAuth } from "../context/AuthContext";
 import {
   Category,
@@ -39,6 +43,7 @@ import {
   PaymentMethodCreateInput,
   UserCreateInput,
   SystemDiagnosticsResponse,
+  VersionRelease,
 } from "../types";
 import { formatDate } from "../utils/format";
 
@@ -138,6 +143,9 @@ export const Settings: React.FC = () => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [diagnostics, setDiagnostics] = useState<SystemDiagnosticsResponse | null>(null);
+  const [releases, setReleases] = useState<VersionRelease[]>([]);
+  const [isChangelogModalOpen, setIsChangelogModalOpen] = useState<boolean>(false);
+  const [activeReleaseFilter, setActiveReleaseFilter] = useState<"all" | "improvements" | "fixes">("all");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDiagLoading, setIsDiagLoading] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -211,14 +219,36 @@ export const Settings: React.FC = () => {
   const loadDiagnostics = useCallback(async () => {
     setIsDiagLoading(true);
     try {
-      const diagData = await walletApi.getSystemDiagnostics();
+      const [diagData, changelogData] = await Promise.all([
+        walletApi.getSystemDiagnostics(),
+        walletApi.getChangelog().catch(() => []),
+      ]);
       setDiagnostics(diagData);
+      setReleases(changelogData);
     } catch {
       console.error("Erro ao carregar diagnósticos do sistema.");
     } finally {
       setIsDiagLoading(false);
     }
   }, []);
+
+  const renderFormattedItem = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return (
+      <span>
+        {parts.map((part, i) => {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            return (
+              <strong key={i} className="font-semibold text-zinc-900 dark:text-zinc-100">
+                {part.slice(2, -2)}
+              </strong>
+            );
+          }
+          return part;
+        })}
+      </span>
+    );
+  };
 
   useEffect(() => {
     loadData();
@@ -991,6 +1021,17 @@ export const Settings: React.FC = () => {
                   </span>
                 </div>
               </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsChangelogModalOpen(true)}
+                  className="w-full py-2 px-3 rounded-xl text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 transition-colors flex items-center justify-center space-x-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Visualizar Notas de Versão (Changelog)</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1105,6 +1146,151 @@ export const Settings: React.FC = () => {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Card 5: Linha do Tempo de Versões & Atualizações (Changelog) */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">
+                      Linha do Tempo de Versões & Atualizações
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-600 text-white">
+                      v{diagnostics?.application.version || "1.0.1"}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Registro de melhorias e correções documentado no Git (CHANGELOG.md)
+                  </span>
+                </div>
+              </div>
+
+              {/* Filtros da Linha do Tempo */}
+              <div className="flex items-center space-x-1.5 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveReleaseFilter("all")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                    activeReleaseFilter === "all"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  Todas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveReleaseFilter("improvements")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                    activeReleaseFilter === "improvements"
+                      ? "bg-emerald-600 text-white"
+                      : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50"
+                  }`}
+                >
+                  Melhorias
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveReleaseFilter("fixes")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                    activeReleaseFilter === "fixes"
+                      ? "bg-amber-600 text-white"
+                      : "text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50"
+                  }`}
+                >
+                  Correções
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de Versões Renderizadas na Linha do Tempo */}
+            {releases.length > 0 ? (
+              <div className="space-y-6 divide-y divide-zinc-100 dark:divide-zinc-800">
+                {releases.map((release) => {
+                  const showImprovements =
+                    (activeReleaseFilter === "all" || activeReleaseFilter === "improvements") &&
+                    release.improvements.length > 0;
+                  const showFixes =
+                    (activeReleaseFilter === "all" || activeReleaseFilter === "fixes") &&
+                    release.fixes.length > 0;
+
+                  if (!showImprovements && !showFixes) return null;
+
+                  return (
+                    <div key={release.version} className="pt-5 first:pt-0 space-y-3.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2.5">
+                          <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                            v{release.version}
+                          </span>
+                          {release.is_current && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              Versão Ativa
+                            </span>
+                          )}
+                        </div>
+
+                        {release.release_date && (
+                          <div className="flex items-center space-x-1 text-xs text-zinc-400">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>{formatDate(release.release_date)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {release.highlights && (
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                          {release.highlights}
+                        </p>
+                      )}
+
+                      {showImprovements && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Melhorias & Novidades</span>
+                          </div>
+                          <ul className="space-y-1 pl-2">
+                            {release.improvements.map((item, idx) => (
+                              <li key={idx} className="text-xs text-zinc-600 dark:text-zinc-300 flex items-start space-x-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                                <span>{renderFormattedItem(item)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {showFixes && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center space-x-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            <Wrench className="w-3.5 h-3.5" />
+                            <span>Correções & Ajustes</span>
+                          </div>
+                          <ul className="space-y-1 pl-2">
+                            {release.fixes.map((item, idx) => (
+                              <li key={idx} className="text-xs text-zinc-600 dark:text-zinc-300 flex items-start space-x-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                                <span>{renderFormattedItem(item)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-zinc-400">
+                Carregando histórico de versões...
+              </div>
+            )}
           </div>
         </div>
       ) : null}
@@ -1506,6 +1692,12 @@ export const Settings: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Notas de Versão */}
+      <ChangelogModal
+        isOpen={isChangelogModalOpen}
+        onClose={() => setIsChangelogModalOpen(false)}
+      />
     </div>
   );
 };

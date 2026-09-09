@@ -17,9 +17,25 @@ from app.schemas.system import (
     DatabaseDiagnostics,
     VolumetricStats,
     ApplicationDiagnostics,
+    VersionRelease,
+    SystemVersionResponse,
 )
+from app.services.changelog_service import ChangelogService
 
 router = APIRouter(prefix="/system", tags=["Sistema & Infraestrutura"])
+
+
+@router.get("/version", response_model=SystemVersionResponse)
+async def get_system_version() -> SystemVersionResponse:
+    """Retorna metadados da versão atual do sistema e histórico completo de lançamentos."""
+    return ChangelogService.get_system_version()
+
+
+@router.get("/changelog", response_model=list[VersionRelease])
+async def get_system_changelog() -> list[VersionRelease]:
+    """Retorna o histórico cronológico de releases com melhorias e correções catalogadas."""
+    return ChangelogService.get_releases()
+
 
 @router.get("/diagnostics", response_model=SystemDiagnosticsResponse)
 async def get_system_diagnostics(

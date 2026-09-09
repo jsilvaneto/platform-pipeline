@@ -17,6 +17,8 @@ import {
   UserCreateInput,
   UserUpdateInput,
   SystemDiagnosticsResponse,
+  VersionRelease,
+  SystemVersionResponse,
 } from "../types";
 
 
@@ -124,6 +126,16 @@ export const walletApi = {
   // Sistema & Diagnósticos de Infraestrutura
   async getSystemDiagnostics(): Promise<SystemDiagnosticsResponse> {
     const { data } = await api.get<SystemDiagnosticsResponse>("/system/diagnostics");
+    return data;
+  },
+
+  async getSystemVersion(): Promise<SystemVersionResponse> {
+    const { data } = await api.get<SystemVersionResponse>("/system/version");
+    return data;
+  },
+
+  async getChangelog(): Promise<VersionRelease[]> {
+    const { data } = await api.get<VersionRelease[]>("/system/changelog");
     return data;
   },
 };

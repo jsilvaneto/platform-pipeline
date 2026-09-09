@@ -240,3 +240,21 @@ export interface ApiErrorDetail {
   detail: string | Array<{ loc: string[]; msg: string; type: string }>;
 }
 
+export interface VersionRelease {
+  version: string;
+  release_date: string;
+  is_current: boolean;
+  highlights?: string | null;
+  improvements: string[];
+  fixes: string[];
+}
+
+export interface SystemVersionResponse {
+  current_version: string;
+  app_name: string;
+  environment: string;
+  release_date?: string | null;
+  releases: VersionRelease[];
+}
+
+

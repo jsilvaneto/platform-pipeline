@@ -7,6 +7,7 @@ import {
   Wallet,
   Settings,
   Shield,
+  Sparkles,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -15,9 +16,18 @@ import { NavTab } from "../types";
 interface HeaderProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
+  onOpenChangelog?: () => void;
+  appVersion?: string;
+  hasUnseenVersion?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
+export const Header: React.FC<HeaderProps> = ({
+  currentTab,
+  onSelectTab,
+  onOpenChangelog,
+  appVersion,
+  hasUnseenVersion,
+}) => {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
 
@@ -83,8 +93,22 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
           </nav>
         </div>
 
-        {/* Lado Direito: Tema & Usuário */}
-        <div className="flex items-center space-x-3">
+        {/* Lado Direito: Versão, Tema & Usuário */}
+        <div className="flex items-center space-x-2.5 sm:space-x-3">
+          {/* Badge de Versão do Sistema */}
+          <button
+            onClick={onOpenChangelog}
+            className="relative inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors border border-zinc-200/80 dark:border-zinc-700/80 cursor-pointer shadow-2xs"
+            title={`Wallet v${appVersion || "1.0.1"} - Clique para ver o que há de novo`}
+            aria-label="Notas de Versão"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+            <span className="font-mono">v{appVersion || "1.0.1"}</span>
+            {hasUnseenVersion && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full ring-2 ring-white dark:ring-zinc-900 animate-pulse" />
+            )}
+          </button>
+
           {/* Alternador de Tema */}
           <button
             onClick={toggleTheme}

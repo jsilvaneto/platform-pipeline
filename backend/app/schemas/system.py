@@ -34,3 +34,21 @@ class SystemDiagnosticsResponse(BaseModel):
     database: DatabaseDiagnostics
     volumetrics: VolumetricStats
     application: ApplicationDiagnostics
+
+
+class VersionRelease(BaseModel):
+    version: str = Field(description="Número semântico da versão (ex: 1.0.1)")
+    release_date: str = Field(description="Data de lançamento no formato YYYY-MM-DD")
+    is_current: bool = Field(default=False, description="Indica se é a versão em execução")
+    highlights: str | None = Field(default=None, description="Resumo ou destaque principal da versão")
+    improvements: list[str] = Field(default_factory=list, description="Lista de novidades e melhorias")
+    fixes: list[str] = Field(default_factory=list, description="Lista de correções e ajustes")
+
+
+class SystemVersionResponse(BaseModel):
+    current_version: str = Field(description="Versão ativa do sistema")
+    app_name: str = Field(description="Nome da aplicação")
+    environment: str = Field(description="Ambiente de execução (development/production)")
+    release_date: str | None = Field(default=None, description="Data de lançamento da versão atual")
+    releases: list[VersionRelease] = Field(default_factory=list, description="Histórico de versões do changelog")
+
