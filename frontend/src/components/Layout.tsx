@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles } from "lucide-react";
 import { Header } from "./Header";
 import { ChangelogModal } from "./ChangelogModal";
 import { walletApi } from "../api/walletApi";
@@ -47,9 +46,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, onSelectTa
       <Header
         currentTab={currentTab}
         onSelectTab={onSelectTab}
-        onOpenChangelog={() => setIsChangelogOpen(true)}
-        appVersion={currentVersion}
-        hasUnseenVersion={hasUnseenVersion}
       />
 
       {/* Conteúdo Principal */}
@@ -58,26 +54,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, onSelectTa
           {children}
         </main>
 
-        {/* Rodapé com Versão Ativa e Link de Novidades */}
+        {/* Rodapé com Versão Ativa e Link de Detalhes */}
         <footer className="border-t border-zinc-200 dark:border-zinc-800 py-6 px-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-            <span>
-              Wallet &bull; Gestão Financeira Pessoal Inteligente &bull; Valores em Centavos Inteiros
-            </span>
-            <span className="hidden sm:inline">&bull;</span>
-            <div className="flex items-center space-x-2">
-              <span className="font-mono font-medium text-zinc-700 dark:text-zinc-300">
-                v{currentVersion}
-              </span>
-              <button
-                onClick={() => setIsChangelogOpen(true)}
-                className="inline-flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-medium transition-colors"
-                title="Ver o que mudou nesta versão"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>O que há de novo?</span>
-              </button>
-            </div>
+          <div className="flex items-center justify-center space-x-1.5">
+            <span>wallet</span>
+            <span>&bull;</span>
+            <button
+              type="button"
+              onClick={() => setIsChangelogOpen(true)}
+              className="relative inline-flex items-center gap-1 font-mono font-medium text-zinc-600 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400 hover:underline transition-colors focus:outline-none cursor-pointer"
+              title="Ver detalhes da versão"
+            >
+              <span>v{currentVersion}</span>
+              {hasUnseenVersion && (
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" title="Nova versão disponível" />
+              )}
+            </button>
           </div>
         </footer>
       </div>
