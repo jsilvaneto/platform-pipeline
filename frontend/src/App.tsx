@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Expenses } from "./pages/Expenses";
+import { Commitments } from "./pages/Commitments";
 import { Contacts } from "./pages/Contacts";
 import { Settings } from "./pages/Settings";
 import { Layout } from "./components/Layout";
@@ -48,6 +49,14 @@ const MainApp: React.FC = () => {
         <Expenses
           isCreateModalOpenExternal={isExpenseModalRequested}
           onCloseCreateModalExternal={() => setIsExpenseModalRequested(false)}
+        />
+      )}
+      {currentTab === "compromissos" && (
+        <Commitments
+          onOpenNewExpenseModal={() => {
+            setCurrentTab("registros");
+            setIsExpenseModalRequested(true);
+          }}
         />
       )}
       {currentTab === "contatos" && <Contacts />}

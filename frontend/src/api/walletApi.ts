@@ -27,6 +27,7 @@ import {
   SystemDiagnosticsResponse,
   VersionRelease,
   SystemVersionResponse,
+  CommitmentsSummary,
 } from "../types";
 
 
@@ -204,6 +205,17 @@ export const walletApi = {
 
   async getChangelog(): Promise<VersionRelease[]> {
     const { data } = await api.get<VersionRelease[]>("/system/changelog");
+    return data;
+  },
+
+  // Compromissos Financeiros (Recorrências & Parcelamentos)
+  async getCommitmentsSummary(): Promise<CommitmentsSummary> {
+    const { data } = await api.get<CommitmentsSummary>("/commitments/summary");
+    return data;
+  },
+
+  async toggleRecurringCommitment(expenseId: string): Promise<Expense> {
+    const { data } = await api.patch<Expense>(`/commitments/${expenseId}/toggle-status`);
     return data;
   },
 };

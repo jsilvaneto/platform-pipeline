@@ -80,8 +80,8 @@ async def update_payment(
 
     await db.flush()
 
-    # Recalcula e sincroniza o total_amount_cents da despesa mãe com a soma das parcelas
-    if payment.expense:
+    # Recalcula e sincroniza o total_amount_cents da despesa mãe com a soma das parcelas (apenas despesas parceladas/avulsas)
+    if payment.expense and not payment.expense.is_recurring:
         expense_payments_res = await db.execute(
             select(Payment).where(Payment.expense_id == payment.expense_id)
         )

@@ -95,32 +95,55 @@ async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) ->
     db.add(expense)
     await db.flush()  # Garante geração do expense.id
 
-    # Divisão precisa em centavos inteiros
-    count = data.installments_count
-    base_cents = data.total_amount_cents // count
-    remainder = data.total_amount_cents % count
+    # Divisão precisa em centavos inteiros ou horizonte para recorrência
     start_due = date.fromisoformat(data.due_date)
-
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    for idx in range(count):
-        installment_num = idx + 1
-        # O resto é atribuído à 1ª parcela para garantir que a soma das parcelas seja estritamente igual ao total
-        inst_amount = base_cents + (remainder if idx == 0 else 0)
-        inst_due = _add_months(start_due, idx).isoformat()
-        inst_status = data.status if count == 1 else "PENDENTE"
-        paid_at = now_iso if inst_status == "CONCLUIDO" else None
+    if data.is_recurring:
+        # Despesa fixa mensal contínua: projeta 12 ocorrências (horizonte de 1 ano)
+        # Cada ocorrência tem o valor mensal integral informado em data.total_amount_cents
+        count = 12
+        expense.installments_count = count
+        for idx in range(count):
+            installment_num = idx + 1
+            inst_amount = data.total_amount_cents
+            inst_due = _add_months(start_due, idx).isoformat()
+            inst_status = data.status if idx == 0 else "PENDENTE"
+            paid_at = now_iso if (idx == 0 and inst_status == "CONCLUIDO") else None
 
-        payment = Payment(
-            user_id=user_id,
-            expense_id=expense.id,
-            installment_number=installment_num,
-            amount_cents=inst_amount,
-            due_date=inst_due,
-            paid_at=paid_at,
-            status=inst_status,
-        )
-        db.add(payment)
+            payment = Payment(
+                user_id=user_id,
+                expense_id=expense.id,
+                installment_number=installment_num,
+                amount_cents=inst_amount,
+                due_date=inst_due,
+                paid_at=paid_at,
+                status=inst_status,
+            )
+            db.add(payment)
+    else:
+        count = data.installments_count
+        base_cents = data.total_amount_cents // count
+        remainder = data.total_amount_cents % count
+
+        for idx in range(count):
+            installment_num = idx + 1
+            # O resto é atribuído à 1ª parcela para garantir que a soma das parcelas seja estritamente igual ao total
+            inst_amount = base_cents + (remainder if idx == 0 else 0)
+            inst_due = _add_months(start_due, idx).isoformat()
+            inst_status = data.status if count == 1 else "PENDENTE"
+            paid_at = now_iso if inst_status == "CONCLUIDO" else None
+
+            payment = Payment(
+                user_id=user_id,
+                expense_id=expense.id,
+                installment_number=installment_num,
+                amount_cents=inst_amount,
+                due_date=inst_due,
+                paid_at=paid_at,
+                status=inst_status,
+            )
+            db.add(payment)
 
     await db.commit()
     await db.refresh(expense)
@@ -148,10 +171,48 @@ async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expens
         )
     return expense
 
+async def ensure_recurring_horizon(db: AsyncSession, user_id: str) -> None:
+    """Garante que despesas recorrentes ativas tenham o horizonte de 12 meses preenchido."""
+    query = (
+        select(Expense)
+        .options(selectinload(Expense.payments))
+        .where(
+            Expense.user_id == user_id,
+            Expense.is_recurring.is_(True),
+            Expense.status != "CANCELADO",
+        )
+    )
+    result = await db.execute(query)
+    recurring_expenses = result.scalars().all()
+    updated = False
+    for exp in recurring_expenses:
+        existing = sorted(exp.payments, key=lambda p: p.installment_number)
+        if len(existing) < 12:
+            start_due = date.fromisoformat(exp.due_date)
+            for idx in range(len(existing), 12):
+                inst_num = idx + 1
+                inst_due = _add_months(start_due, idx).isoformat()
+                payment = Payment(
+                    user_id=user_id,
+                    expense_id=exp.id,
+                    installment_number=inst_num,
+                    amount_cents=exp.total_amount_cents,
+                    due_date=inst_due,
+                    paid_at=None,
+                    status="PENDENTE",
+                )
+                db.add(payment)
+            exp.installments_count = 12
+            updated = True
+    if updated:
+        await db.commit()
+
 async def list_expenses(
     db: AsyncSession, user_id: str, filter_params: ExpenseFilter
 ) -> Sequence[Expense]:
     """Lista despesas do usuário com filtros opcionais por mês, status, categoria, item ou essencialidade."""
+    await ensure_recurring_horizon(db, user_id)
+
     query = (
         select(Expense)
         .options(
@@ -281,7 +342,13 @@ async def update_expense(
                     p.due_date = _add_months(start_due, p.installment_number - 1).isoformat()
 
     if data.total_amount_cents is not None and data.total_amount_cents != expense.total_amount_cents:
-        if expense.installments_count == 1:
+        if expense.is_recurring:
+            # Para despesa recorrente, atualiza o valor mensal padrão e todos os pagamentos pendentes futuros
+            expense.total_amount_cents = data.total_amount_cents
+            for p in expense.payments:
+                if p.status == "PENDENTE":
+                    p.amount_cents = data.total_amount_cents
+        elif expense.installments_count == 1:
             expense.total_amount_cents = data.total_amount_cents
             if expense.payments:
                 expense.payments[0].amount_cents = data.total_amount_cents
@@ -304,7 +371,16 @@ async def update_expense(
         expense.essentiality = data.essentiality
     if data.status is not None:
         expense.status = data.status
-        if expense.installments_count == 1 and expense.payments:
+        if expense.is_recurring:
+            if data.status == "CANCELADO":
+                for p in expense.payments:
+                    if p.status == "PENDENTE":
+                        p.status = "CANCELADO"
+            elif data.status != "CANCELADO":
+                for p in expense.payments:
+                    if p.status == "CANCELADO":
+                        p.status = "PENDENTE"
+        elif expense.installments_count == 1 and expense.payments:
             expense.payments[0].status = data.status
             if data.status == "CONCLUIDO" and not expense.payments[0].paid_at:
                 expense.payments[0].paid_at = datetime.now(timezone.utc).isoformat()

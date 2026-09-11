@@ -798,14 +798,15 @@ export const Expenses: React.FC<ExpensesProps> = ({
         <div className="space-y-3">
           {expenses.map((expense) => {
             const isExpanded = expandedExpenseIds.has(expense.id);
-            const isParcelado = expense.installments_count > 1;
+            const isRecurring = expense.is_recurring;
+            const isParcelado = expense.installments_count > 1 && !isRecurring;
             const essentialityCfg = ESSENTIALITY_LABELS[expense.essentiality];
 
-            // Parcela relevante do mês selecionado
+            // Parcela/ocorrência relevante do mês selecionado
             const currentInstallment = expense.payments.find((p) =>
               p.due_date.startsWith(selectedMonth)
             );
-            const singlePayment = expense.payments[0];
+            const singlePayment = isRecurring ? currentInstallment : expense.payments[0];
 
             return (
               <div
@@ -894,6 +895,8 @@ export const Expenses: React.FC<ExpensesProps> = ({
                       <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 block">
                         {isParcelado && currentInstallment
                           ? formatCurrency(currentInstallment.amount_cents)
+                          : isRecurring && currentInstallment
+                          ? formatCurrency(currentInstallment.amount_cents)
                           : formatCurrency(expense.total_amount_cents)}
                       </span>
                       {isParcelado && (
@@ -901,36 +904,53 @@ export const Expenses: React.FC<ExpensesProps> = ({
                           Total: {formatCurrency(expense.total_amount_cents)}
                         </span>
                       )}
+                      {isRecurring && (
+                        <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium block">
+                          Recorrência Mensal
+                        </span>
+                      )}
                     </div>
 
-                    {/* Ação Rápida de Pagamento para 1x ou Detalhes para Parcelas */}
+                    {/* Ação Rápida de Pagamento para 1x ou Recorrência */}
                     {!isParcelado && singlePayment ? (
-                      <button
-                        onClick={() =>
-                          handleTogglePaymentStatus(singlePayment.id, singlePayment.status)
-                        }
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
-                          singlePayment.status === "CONCLUIDO"
-                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200"
-                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-200"
-                        }`}
-                      >
-                        {singlePayment.status === "CONCLUIDO" ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span>Pago</span>
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                            <span>Pagar</span>
-                          </>
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() =>
+                            handleTogglePaymentStatus(singlePayment.id, singlePayment.status)
+                          }
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer ${
+                            singlePayment.status === "CONCLUIDO"
+                              ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200"
+                              : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-200"
+                          }`}
+                        >
+                          {singlePayment.status === "CONCLUIDO" ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>Pago</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>Pagar</span>
+                            </>
+                          )}
+                        </button>
+                        {isRecurring && (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(expense.id)}
+                            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                            title={isExpanded ? "Ocultar detalhamento de 12 meses" : "Ver histórico e projeção de 12 meses"}
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
                         )}
-                      </button>
+                      </div>
                     ) : (
                       <button
                         onClick={() => toggleExpand(expense.id)}
-                        className="px-3 py-1.5 rounded-xl text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center space-x-1"
+                        className="px-3 py-1.5 rounded-xl text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center space-x-1 cursor-pointer"
                       >
                         <span>Parcelas</span>
                         {isExpanded ? (
@@ -961,8 +981,8 @@ export const Expenses: React.FC<ExpensesProps> = ({
                   </div>
                 </div>
 
-                {/* Sub-tabela de Parcelas (Quando expandido) */}
-                {isParcelado && isExpanded && (() => {
+                {/* Sub-tabela de Parcelas / Recorrência (Quando expandido) */}
+                {(isParcelado || isRecurring) && isExpanded && (() => {
                   const sortedPayments = [...expense.payments].sort(
                     (a, b) => a.installment_number - b.installment_number
                   );
@@ -992,10 +1012,10 @@ export const Expenses: React.FC<ExpensesProps> = ({
                         <div className="space-y-1.5">
                           <div className="flex items-center space-x-2">
                             <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-                              Detalhamento de Parcelas
+                              {isRecurring ? "Detalhamento da Recorrência (12 Meses)" : "Detalhamento de Parcelas"}
                             </span>
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                              {paidCount} de {totalCount} pagas ({progressPercent}%)
+                              {paidCount} de {totalCount} {isRecurring ? "meses pagos" : "pagas"} ({progressPercent}%)
                             </span>
                           </div>
 
@@ -1315,56 +1335,73 @@ export const Expenses: React.FC<ExpensesProps> = ({
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Quantidade de Parcelas *
-                </label>
-                {currentInstallmentsCount > 1 && currentAmountCents > 0 ? (
-                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                    {currentInstallmentsCount}x de {formatCurrency(Math.round(currentAmountCents / currentInstallmentsCount))}
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                    À vista (1x)
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="relative flex-1">
-                  <input
-                    type="number"
-                    min={1}
-                    max={120}
-                    required
-                    value={formInstallmentsStr}
-                    onChange={(e) => setFormInstallmentsStr(e.target.value)}
-                    onBlur={() => {
-                      const val = parseInt(formInstallmentsStr, 10);
-                      if (isNaN(val) || val < 1) {
-                        setFormInstallmentsStr("1");
-                      } else if (val > 120) {
-                        setFormInstallmentsStr("120");
-                      } else {
-                        setFormInstallmentsStr(String(val));
-                      }
-                    }}
-                    placeholder="1"
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                  />
+              {formIsRecurring ? (
+                <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                  <div className="flex items-center space-x-1.5 font-semibold">
+                    <Repeat className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span>Recorrência Mensal Contínua</span>
+                  </div>
+                  <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80">
+                    O valor mensal informado será projetado automaticamente para os próximos 12 meses, integrando-se aos relatórios e ao menu de Compromissos.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setFormInstallmentsStr("1")}
-                  className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all ${
-                    currentInstallmentsCount === 1
-                      ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                      : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                  }`}
-                  title="Definir pagamento à vista em 1 parcela"
-                >
-                  À vista
-                </button>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      Quantidade de Parcelas *
+                    </label>
+                    {currentInstallmentsCount > 1 && currentAmountCents > 0 ? (
+                      <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                        {currentInstallmentsCount}x de{" "}
+                        {formatCurrency(
+                          Math.round(currentAmountCents / currentInstallmentsCount)
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                        À vista (1x)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        required
+                        value={formInstallmentsStr}
+                        onChange={(e) => setFormInstallmentsStr(e.target.value)}
+                        onBlur={() => {
+                          const val = parseInt(formInstallmentsStr, 10);
+                          if (isNaN(val) || val < 1) {
+                            setFormInstallmentsStr("1");
+                          } else if (val > 120) {
+                            setFormInstallmentsStr("120");
+                          } else {
+                            setFormInstallmentsStr(String(val));
+                          }
+                        }}
+                        placeholder="1"
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormInstallmentsStr("1")}
+                      className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                        currentInstallmentsCount === 1
+                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                          : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                      }`}
+                      title="Definir pagamento à vista em 1 parcela"
+                    >
+                      À vista
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

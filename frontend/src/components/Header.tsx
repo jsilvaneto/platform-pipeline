@@ -8,6 +8,7 @@ import {
   Users,
   Settings,
   Shield,
+  CalendarClock,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -63,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={() => onSelectTab("registros")}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
                 currentTab === "registros"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 font-semibold"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
@@ -74,8 +75,20 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              onClick={() => onSelectTab("compromissos")}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                currentTab === "compromissos"
+                  ? "bg-zinc-100 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 font-semibold"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+              }`}
+            >
+              <CalendarClock className="w-4 h-4" />
+              <span>Compromissos</span>
+            </button>
+
+            <button
               onClick={() => onSelectTab("contatos")}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
                 currentTab === "contatos"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 font-semibold"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
@@ -152,7 +165,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={() => onSelectTab("registros")}
-          className={`text-xs font-medium py-1.5 px-3 rounded-xl flex items-center space-x-1.5 ${
+          className={`text-xs font-medium py-1.5 px-2.5 rounded-xl flex items-center space-x-1.5 ${
             currentTab === "registros"
               ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-semibold"
               : "text-zinc-600 dark:text-zinc-400"
@@ -163,8 +176,20 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <button
+          onClick={() => onSelectTab("compromissos")}
+          className={`text-xs font-medium py-1.5 px-2.5 rounded-xl flex items-center space-x-1.5 ${
+            currentTab === "compromissos"
+              ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-semibold"
+              : "text-zinc-600 dark:text-zinc-400"
+          }`}
+        >
+          <CalendarClock className="w-3.5 h-3.5" />
+          <span>Compromissos</span>
+        </button>
+
+        <button
           onClick={() => onSelectTab("contatos")}
-          className={`text-xs font-medium py-1.5 px-3 rounded-xl flex items-center space-x-1.5 ${
+          className={`text-xs font-medium py-1.5 px-2.5 rounded-xl flex items-center space-x-1.5 ${
             currentTab === "contatos"
               ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-semibold"
               : "text-zinc-600 dark:text-zinc-400"

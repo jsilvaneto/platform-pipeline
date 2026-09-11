@@ -10,7 +10,7 @@ export type PaymentMethodType =
   | "BOLETO"
   | "OUTRO";
 
-export type NavTab = "inicio" | "registros" | "contatos" | "configuracoes";
+export type NavTab = "inicio" | "registros" | "compromissos" | "contatos" | "configuracoes";
 
 export interface User {
   id: string;
@@ -364,5 +364,73 @@ export interface SystemVersionResponse {
   release_date?: string | null;
   releases: VersionRelease[];
 }
+
+export interface NextPayoffInfo {
+  expense_id: string;
+  description: string;
+  item_name?: string | null;
+  remaining_installments: number;
+  total_installments: number;
+  payoff_due_date: string;
+  remaining_cents: number;
+}
+
+export interface MonthlyCommitmentProjection {
+  month: string;
+  month_name: string;
+  recurring_cents: number;
+  installments_cents: number;
+  total_cents: number;
+}
+
+export interface RecurringCommitmentItem {
+  expense_id: string;
+  description: string;
+  item_id?: string | null;
+  item_name?: string | null;
+  category_id?: string | null;
+  category_name?: string | null;
+  category_color?: string | null;
+  contact_name?: string | null;
+  payment_method_name?: string | null;
+  amount_cents: number;
+  due_day: number;
+  status: string;
+  next_due_date?: string | null;
+  next_payment_id?: string | null;
+  next_payment_status?: string | null;
+}
+
+export interface InstallmentCommitmentItem {
+  expense_id: string;
+  description: string;
+  item_name?: string | null;
+  category_name?: string | null;
+  category_color?: string | null;
+  contact_name?: string | null;
+  total_amount_cents: number;
+  paid_amount_cents: number;
+  remaining_amount_cents: number;
+  installment_amount_cents: number;
+  total_installments: number;
+  paid_installments: number;
+  remaining_installments: number;
+  progress_percentage: number;
+  next_due_date?: string | null;
+  last_due_date?: string | null;
+  payments: Payment[];
+}
+
+export interface CommitmentsSummary {
+  fixed_monthly_total_cents: number;
+  active_recurring_count: number;
+  total_installments_remaining_cents: number;
+  active_installments_count: number;
+  next_payoff?: NextPayoffInfo | null;
+  recurring_commitments: RecurringCommitmentItem[];
+  installment_commitments: InstallmentCommitmentItem[];
+  monthly_projection: MonthlyCommitmentProjection[];
+}
+
 
 
