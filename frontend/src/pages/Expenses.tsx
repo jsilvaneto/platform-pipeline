@@ -65,6 +65,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
 }) => {
   const today = new Date();
   const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const todayIsoDate = today.toISOString().split("T")[0];
 
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "ALL">("ALL");
@@ -138,6 +139,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [paymentFormError, setPaymentFormError] = useState<string | null>(null);
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState<boolean>(false);
   const [showEditInstallmentsList, setShowEditInstallmentsList] = useState<boolean>(false);
+  const [installmentFilter, setInstallmentFilter] = useState<Record<string, "ALL" | "PENDING" | "PAID">>({});
 
   // Sincroniza abertura de modal disparada de fora (ex: atalhos do Dashboard)
   useEffect(() => {
