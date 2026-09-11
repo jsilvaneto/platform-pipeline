@@ -29,6 +29,9 @@ class ExpenseCreate(ExpenseBase):
 
 class ExpenseUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=1, max_length=200)
+    total_amount_cents: int | None = Field(default=None, gt=0, description="Valor total da despesa em centavos")
+    issue_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data da despesa (YYYY-MM-DD)")
+    due_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data de vencimento (YYYY-MM-DD)")
     category_id: str | None = None
     item_id: str | None = None
     contact_id: str | None = None

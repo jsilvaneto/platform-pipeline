@@ -274,11 +274,12 @@ export const Expenses: React.FC<ExpensesProps> = ({
 
     setIsQuickContactSubmitting(true);
     try {
-      const created = await walletApi.createContact({
+      const payload: ContactCreateInput = {
         name: quickContactName.trim(),
         phone: quickContactPhone.trim() || null,
         is_active: true,
-      });
+      };
+      const created = await walletApi.createContact(payload);
       const updatedContacts = await walletApi.getContacts();
       setContacts(updatedContacts);
       setFormContactId(created.id);
