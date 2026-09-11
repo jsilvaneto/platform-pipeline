@@ -280,63 +280,90 @@ export const Contacts: React.FC = () => {
         </span>
       </div>
 
-      {/* Lista de Contatos */}
+      {/* Tabela de Contatos */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">Carregando contatos...</span>
+        <div className="flex items-center justify-center py-16 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
         </div>
       ) : error ? (
         <div className="p-6 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl text-center">
           <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
           <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{error}</p>
         </div>
-      ) : contacts.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4 text-zinc-400">
-            <Users className="w-6 h-6" />
-          </div>
-          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            Nenhum contato encontrado
-          </h3>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 max-w-md mx-auto">
-            Cadastre fornecedores, pessoas, prestadores de serviço ou mantenha o contato padrão Pessoal.
-          </p>
-          <button
-            onClick={handleOpenCreateModal}
-            className="mt-5 inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-sm transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Cadastrar Contato</span>
-          </button>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {contacts.map((contact) => {
-            const initials = contact.name
-              .split(" ")
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((w) => w[0].toUpperCase())
-              .join("");
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Contato / Beneficiário</th>
+                  <th className="py-3.5 px-4">Telefone</th>
+                  <th className="py-3.5 px-4">E-mail</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Data de Cadastro</th>
+                  <th className="py-3.5 px-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
+                {contacts.map((contact) => {
+                  const initials = contact.name
+                    .split(" ")
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0].toUpperCase())
+                    .join("");
 
-            return (
-              <div
-                key={contact.id}
-                className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600/15 to-cyan-500/20 text-blue-600 dark:text-blue-400 font-bold text-sm flex items-center justify-center border border-blue-200/50 dark:border-blue-800/40">
-                        {initials || "CT"}
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
-                          {contact.name}
-                        </h3>
+                  return (
+                    <tr
+                      key={contact.id}
+                      className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors"
+                    >
+                      <td className="py-3.5 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600/15 to-cyan-500/20 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center border border-blue-200/50 dark:border-blue-800/40 shrink-0 shadow-xs">
+                            {initials || "CT"}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block truncate font-medium text-zinc-900 dark:text-zinc-100">
+                              {contact.name}
+                            </span>
+                            {contact.notes && (
+                              <span
+                                className="text-[11px] text-zinc-400 dark:text-zinc-500 font-normal truncate block max-w-xs"
+                                title={contact.notes}
+                              >
+                                {contact.notes}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                        {contact.phone ? (
+                          <div className="flex items-center space-x-1.5">
+                            <Phone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                            <span>{contact.phone}</span>
+                          </div>
+                        ) : (
+                          <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-zinc-600 dark:text-zinc-300">
+                        {contact.email ? (
+                          <div className="flex items-center space-x-1.5">
+                            <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                            <span className="truncate max-w-[200px]">{contact.email}</span>
+                          </div>
+                        ) : (
+                          <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         <span
-                          className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${
                             contact.is_active
                               ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                               : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
@@ -344,65 +371,55 @@ export const Contacts: React.FC = () => {
                         >
                           {contact.is_active ? "Ativo" : "Inativo"}
                         </span>
-                      </div>
-                    </div>
+                      </td>
 
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() => handleOpenEditModal(contact)}
-                        className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                        title="Editar Contato"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteContact(contact)}
-                        className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                        title="Excluir Contato"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                      <td className="py-3.5 px-4 text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
+                        {formatDate(contact.created_at)}
+                      </td>
 
-                  {/* Informações de Contato */}
-                  <div className="mt-4 space-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {contact.email && (
-                      <div className="flex items-center space-x-2">
-                        <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                        <span className="truncate">{contact.email}</span>
-                      </div>
-                    )}
-                    {contact.phone && (
-                      <div className="flex items-center space-x-2">
-                        <Phone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                        <span>{contact.phone}</span>
-                      </div>
-                    )}
-                    {contact.notes && (
-                      <div className="flex items-start space-x-2 pt-1">
-                        <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0 mt-0.5" />
-                        <p className="text-zinc-600 dark:text-zinc-300 italic line-clamp-2">
-                          "{contact.notes}"
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-1">
+                        <button
+                          onClick={() => loadContactDetails(contact)}
+                          className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                          title="Ver Lançamentos & Planejados"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditModal(contact)}
+                          className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                          title="Editar Contato"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteContact(contact)}
+                          className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                          title="Excluir Contato"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
 
-                {/* Botão para Acessar Detalhes e Planejados */}
-                <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800/80">
-                  <button
-                    onClick={() => loadContactDetails(contact)}
-                    className="w-full flex items-center justify-center space-x-2 bg-zinc-50 dark:bg-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 border border-zinc-200 dark:border-zinc-700 rounded-xl py-2 px-3 text-xs font-semibold transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Ver Lançamentos & Planejados</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                {contacts.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-zinc-400 dark:text-zinc-500">
+                      <Users className="w-8 h-8 mx-auto mb-2 opacity-40 text-zinc-400" />
+                      <p className="font-semibold text-sm text-zinc-700 dark:text-zinc-300">
+                        Nenhum contato encontrado
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Clique no botão "+ Novo Contato" acima para adicionar o primeiro.
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
