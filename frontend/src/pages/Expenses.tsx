@@ -962,61 +962,228 @@ export const Expenses: React.FC<ExpensesProps> = ({
                 </div>
 
                 {/* Sub-tabela de Parcelas (Quando expandido) */}
-                {isParcelado && isExpanded && (
-                  <div className="bg-zinc-50/80 dark:bg-zinc-950/50 border-t border-zinc-200 dark:border-zinc-800 px-5 py-3 space-y-2">
-                    <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-2">
-                      Detalhamento de Parcelas
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                      {expense.payments.map((p) => (
-                        <div
-                          key={p.id}
-                          className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-2xs"
-                        >
-                          <div>
-                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
-                              Parcela {p.installment_number}/{expense.installments_count}
+                {isParcelado && isExpanded && (() => {
+                  const sortedPayments = [...expense.payments].sort(
+                    (a, b) => a.installment_number - b.installment_number
+                  );
+                  const paidCount = sortedPayments.filter((p) => p.status === "CONCLUIDO").length;
+                  const totalCount = expense.installments_count || sortedPayments.length;
+                  const progressPercent =
+                    totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
+                  const paidAmountCents = sortedPayments
+                    .filter((p) => p.status === "CONCLUIDO")
+                    .reduce((acc, p) => acc + p.amount_cents, 0);
+                  const remainingAmountCents = Math.max(
+                    0,
+                    expense.total_amount_cents - paidAmountCents
+                  );
+
+                  const currentFilter = installmentFilter[expense.id] || "ALL";
+                  const displayedPayments = sortedPayments.filter((p) => {
+                    if (currentFilter === "PENDING") return p.status !== "CONCLUIDO";
+                    if (currentFilter === "PAID") return p.status === "CONCLUIDO";
+                    return true;
+                  });
+
+                  return (
+                    <div className="bg-zinc-50/80 dark:bg-zinc-950/50 border-t border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 py-3.5 space-y-3">
+                      {/* Header com Resumo de Quitação e Filtros */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+                              Detalhamento de Parcelas
                             </span>
-                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                              Vence em: {formatDate(p.due_date)}
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                              {paidCount} de {totalCount} pagas ({progressPercent}%)
                             </span>
                           </div>
 
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mr-0.5">
-                              {formatCurrency(p.amount_cents)}
+                          <div className="flex items-center space-x-3 text-xs text-zinc-500 dark:text-zinc-400">
+                            <span>
+                              Pago:{" "}
+                              <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                {formatCurrency(paidAmountCents)}
+                              </strong>
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditPaymentModal(expense, p)}
-                              className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                              title="Editar valor desta parcela"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleTogglePaymentStatus(p.id, p.status)}
-                              className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                p.status === "CONCLUIDO"
-                                  ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
-                                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-amber-100 hover:text-amber-700"
-                              }`}
-                              title={p.status === "CONCLUIDO" ? "Desmarcar pagamento" : "Marcar como pago"}
-                            >
-                              <CheckCircle2
-                                className={`w-4 h-4 ${
-                                  p.status === "CONCLUIDO"
-                                    ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-zinc-400"
-                                }`}
-                              />
-                            </button>
+                            <span>•</span>
+                            <span>
+                              Restante:{" "}
+                              <strong className="text-zinc-700 dark:text-zinc-300 font-semibold">
+                                {formatCurrency(remainingAmountCents)}
+                              </strong>
+                            </span>
+                          </div>
+
+                          {/* Barra de Progresso visual */}
+                          <div className="w-full sm:w-64 bg-zinc-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                              style={{ width: `${progressPercent}%` }}
+                            />
                           </div>
                         </div>
-                      ))}
+
+                        {/* Filtros Rápidos (exibidos quando houver mais de 3 parcelas) */}
+                        {totalCount > 3 && (
+                          <div className="flex items-center space-x-1 bg-zinc-200/60 dark:bg-zinc-800/80 p-1 rounded-xl self-start sm:self-center">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setInstallmentFilter((prev) => ({ ...prev, [expense.id]: "ALL" }))
+                              }
+                              className={`px-2.5 py-1 text-xs rounded-lg transition-colors cursor-pointer ${
+                                currentFilter === "ALL"
+                                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold"
+                                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 font-medium"
+                              }`}
+                            >
+                              Todas ({totalCount})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setInstallmentFilter((prev) => ({
+                                  ...prev,
+                                  [expense.id]: "PENDING",
+                                }))
+                              }
+                              className={`px-2.5 py-1 text-xs rounded-lg transition-colors cursor-pointer ${
+                                currentFilter === "PENDING"
+                                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold"
+                                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 font-medium"
+                              }`}
+                            >
+                              Pendentes ({totalCount - paidCount})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setInstallmentFilter((prev) => ({ ...prev, [expense.id]: "PAID" }))
+                              }
+                              className={`px-2.5 py-1 text-xs rounded-lg transition-colors cursor-pointer ${
+                                currentFilter === "PAID"
+                                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold"
+                                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 font-medium"
+                              }`}
+                            >
+                              Pagas ({paidCount})
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tabela de Parcelas com Sticky Header e Scroll Vertical */}
+                      <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 shadow-2xs">
+                        <div className="max-h-72 overflow-y-auto overscroll-contain">
+                          <table className="w-full text-left border-collapse">
+                            <thead className="sticky top-0 bg-zinc-50/95 dark:bg-zinc-800/95 backdrop-blur-xs border-b border-zinc-200 dark:border-zinc-800 z-10">
+                              <tr>
+                                <th className="py-2.5 px-4 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                  Parcela
+                                </th>
+                                <th className="py-2.5 px-4 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                  Vencimento
+                                </th>
+                                <th className="py-2.5 px-4 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-right">
+                                  Valor
+                                </th>
+                                <th className="py-2.5 px-4 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-center">
+                                  Status
+                                </th>
+                                <th className="py-2.5 px-4 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-right">
+                                  Ações
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
+                              {displayedPayments.map((p) => {
+                                const isPaid = p.status === "CONCLUIDO";
+                                const isOverdue = !isPaid && p.due_date < todayIsoDate;
+
+                                return (
+                                  <tr
+                                    key={p.id}
+                                    className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors"
+                                  >
+                                    <td className="py-2.5 px-4 font-semibold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                                      Parcela {String(p.installment_number).padStart(2, "0")}/
+                                      {String(totalCount).padStart(2, "0")}
+                                    </td>
+
+                                    <td className="py-2.5 px-4 whitespace-nowrap">
+                                      <span
+                                        className={
+                                          isOverdue
+                                            ? "text-rose-600 dark:text-rose-400 font-semibold"
+                                            : "text-zinc-600 dark:text-zinc-300"
+                                        }
+                                      >
+                                        {formatDate(p.due_date)}
+                                      </span>
+                                    </td>
+
+                                    <td className="py-2.5 px-4 text-right font-bold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                                      {formatCurrency(p.amount_cents)}
+                                    </td>
+
+                                    <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                                      <span
+                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                                          isPaid
+                                            ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                            : isOverdue
+                                            ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                                            : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                                        }`}
+                                      >
+                                        {isPaid ? "Paga" : isOverdue ? "Atrasada" : "Pendente"}
+                                      </span>
+                                    </td>
+
+                                    <td className="py-2.5 px-4 text-right whitespace-nowrap space-x-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditPaymentModal(expense, p)}
+                                        className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer inline-flex items-center"
+                                        title="Editar valor desta parcela"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleTogglePaymentStatus(p.id, p.status)}
+                                        className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer inline-flex items-center ${
+                                          isPaid
+                                            ? "text-emerald-600 dark:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            : "text-zinc-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/50"
+                                        }`}
+                                        title={isPaid ? "Desmarcar pagamento" : "Marcar como pago"}
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+
+                              {displayedPayments.length === 0 && (
+                                <tr>
+                                  <td
+                                    colSpan={5}
+                                    className="py-6 text-center text-zinc-400 dark:text-zinc-500"
+                                  >
+                                    Nenhuma parcela encontrada para o filtro selecionado.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}
@@ -1520,56 +1687,101 @@ export const Expenses: React.FC<ExpensesProps> = ({
           {/* Seção de Edição Individual de Parcelas (Opcional quando expandido) */}
           {editingExpense && editingExpense.installments_count > 1 && showEditInstallmentsList && (
             <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 bg-zinc-50/80 dark:bg-zinc-950/50 space-y-2 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                    Parcelas deste Registro ({editingExpense.installments_count})
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Edite o valor de qualquer parcela individualmente sem alterar as outras.
-                  </p>
-                </div>
+              <div>
+                <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  Parcelas deste Registro ({editingExpense.installments_count})
+                </h4>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Edite o valor de qualquer parcela individualmente sem alterar as outras.
+                </p>
               </div>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                {editingExpense.payments.map((p) => (
-                  <div
-                    key={p.id}
-                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 flex items-center justify-between text-xs shadow-2xs"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                        Parcela {p.installment_number}/{editingExpense.installments_count}
-                      </span>
-                      <span className="text-[11px] text-zinc-400">
-                        • {formatDate(p.due_date)}
-                      </span>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                          p.status === "CONCLUIDO"
-                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
-                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
-                        }`}
-                      >
-                        {p.status === "CONCLUIDO" ? "Paga" : "Pendente"}
-                      </span>
-                    </div>
 
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(p.amount_cents)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditPaymentModal(editingExpense, p)}
-                        className="px-2.5 py-1 bg-zinc-100 hover:bg-blue-50 text-zinc-700 hover:text-blue-600 dark:bg-zinc-800 dark:hover:bg-blue-950/60 dark:text-zinc-300 dark:hover:text-blue-400 rounded-lg text-xs font-semibold transition-colors flex items-center space-x-1"
-                        title="Editar valor apenas desta parcela"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                        <span>Editar</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 shadow-2xs">
+                <div className="max-h-52 overflow-y-auto overscroll-contain">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 bg-zinc-50/95 dark:bg-zinc-800/95 backdrop-blur-xs border-b border-zinc-200 dark:border-zinc-800 z-10">
+                      <tr>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                          Parcela
+                        </th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                          Vencimento
+                        </th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-right">
+                          Valor
+                        </th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-center">
+                          Status
+                        </th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-right">
+                          Ação
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
+                      {[...editingExpense.payments]
+                        .sort((a, b) => a.installment_number - b.installment_number)
+                        .map((p) => {
+                          const isPaid = p.status === "CONCLUIDO";
+                          const isOverdue = !isPaid && p.due_date < todayIsoDate;
+
+                          return (
+                            <tr
+                              key={p.id}
+                              className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors"
+                            >
+                              <td className="py-2 px-3 font-semibold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                                Parcela {String(p.installment_number).padStart(2, "0")}/
+                                {String(editingExpense.installments_count).padStart(2, "0")}
+                              </td>
+
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span
+                                  className={
+                                    isOverdue
+                                      ? "text-rose-600 dark:text-rose-400 font-semibold"
+                                      : "text-zinc-600 dark:text-zinc-300"
+                                  }
+                                >
+                                  {formatDate(p.due_date)}
+                                </span>
+                              </td>
+
+                              <td className="py-2 px-3 text-right font-bold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                                {formatCurrency(p.amount_cents)}
+                              </td>
+
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                                    isPaid
+                                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                      : isOverdue
+                                      ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                                      : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                                  }`}
+                                >
+                                  {isPaid ? "Paga" : isOverdue ? "Atrasada" : "Pendente"}
+                                </span>
+                              </td>
+
+                              <td className="py-2 px-3 text-right whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditPaymentModal(editingExpense, p)}
+                                  className="px-2 py-1 bg-zinc-100 hover:bg-blue-50 text-zinc-700 hover:text-blue-600 dark:bg-zinc-800 dark:hover:bg-blue-950/60 dark:text-zinc-300 dark:hover:text-blue-400 rounded-lg text-xs font-semibold transition-colors inline-flex items-center space-x-1 cursor-pointer"
+                                  title="Editar valor apenas desta parcela"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                  <span>Editar</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
