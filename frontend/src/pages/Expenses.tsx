@@ -14,6 +14,7 @@ import {
   CreditCard,
   Tag,
   Loader2,
+  Users,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import { Modal } from "../components/Modal";
@@ -21,9 +22,11 @@ import {
   Expense,
   Category,
   Item,
+  Contact,
   PaymentMethod,
   ExpenseCreateInput,
   ItemCreateInput,
+  ContactCreateInput,
   EssentialityType,
   ExpenseStatus,
 } from "../types";
@@ -64,11 +67,13 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "ALL">("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [itemFilter, setItemFilter] = useState<string>("ALL");
+  const [contactFilter, setContactFilter] = useState<string>("ALL");
   const [essentialityFilter, setEssentialityFilter] = useState<EssentialityType | "ALL">("ALL");
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +84,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
 
   // Form states
   const [formItemId, setFormItemId] = useState<string>("");
+  const [formContactId, setFormContactId] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formAmountStr, setFormAmountStr] = useState<string>("");
   const [formIssueDate, setFormIssueDate] = useState<string>(today.toISOString().split("T")[0]);
@@ -98,6 +104,12 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [quickItemNature, setQuickItemNature] = useState<EssentialityType>("NECESSARIO");
   const [isQuickSubmitting, setIsQuickSubmitting] = useState<boolean>(false);
 
+  // Quick Create Contact states
+  const [isQuickContactModalOpen, setIsQuickContactModalOpen] = useState<boolean>(false);
+  const [quickContactName, setQuickContactName] = useState<string>("");
+  const [quickContactPhone, setQuickContactPhone] = useState<string>("");
+  const [isQuickContactSubmitting, setIsQuickContactSubmitting] = useState<boolean>(false);
+
   // Sincroniza abertura de modal disparada de fora (ex: atalhos do Dashboard)
   useEffect(() => {
     if (isCreateModalOpenExternal) {
@@ -109,22 +121,25 @@ export const Expenses: React.FC<ExpensesProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const [expData, catData, itmData, pmData] = await Promise.all([
+      const [expData, catData, itmData, pmData, ctData] = await Promise.all([
         walletApi.getExpenses({
           month: selectedMonth,
           status: statusFilter !== "ALL" ? statusFilter : undefined,
           category_id: categoryFilter !== "ALL" ? categoryFilter : undefined,
           item_id: itemFilter !== "ALL" ? itemFilter : undefined,
+          contact_id: contactFilter !== "ALL" ? contactFilter : undefined,
           essentiality: essentialityFilter !== "ALL" ? essentialityFilter : undefined,
         }),
         walletApi.getCategories(),
         walletApi.getItems(),
         walletApi.getPaymentMethods(),
+        walletApi.getContacts(),
       ]);
       setExpenses(expData);
       setCategories(catData);
       setItems(itmData);
       setPaymentMethods(pmData);
+      setContacts(ctData);
 
       if (itmData.length > 0 && !formItemId) {
         const firstActive = itmData.find((it) => it.is_active) || itmData[0];
@@ -136,6 +151,12 @@ export const Expenses: React.FC<ExpensesProps> = ({
       } else if (catData.length > 0 && !formCategoryId) {
         setFormCategoryId(catData[0].id);
       }
+      if (ctData.length > 0 && !formContactId) {
+        const firstActiveContact = ctData.find((c) => c.is_active) || ctData[0];
+        if (firstActiveContact) {
+          setFormContactId(firstActiveContact.id);
+        }
+      }
       if (pmData.length > 0 && !formPaymentMethodId) {
         setFormPaymentMethodId(pmData[0].id);
       }
@@ -144,7 +165,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedMonth, statusFilter, categoryFilter, itemFilter, essentialityFilter]);
+  }, [selectedMonth, statusFilter, categoryFilter, itemFilter, contactFilter, essentialityFilter]);
 
   useEffect(() => {
     loadData();
@@ -247,12 +268,41 @@ export const Expenses: React.FC<ExpensesProps> = ({
     }
   };
 
+  const handleQuickCreateContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickContactName.trim()) return;
+
+    setIsQuickContactSubmitting(true);
+    try {
+      const created = await walletApi.createContact({
+        name: quickContactName.trim(),
+        phone: quickContactPhone.trim() || null,
+        is_active: true,
+      });
+      const updatedContacts = await walletApi.getContacts();
+      setContacts(updatedContacts);
+      setFormContactId(created.id);
+      setIsQuickContactModalOpen(false);
+      setQuickContactName("");
+      setQuickContactPhone("");
+    } catch {
+      alert("Erro ao cadastrar novo contato rápido.");
+    } finally {
+      setIsQuickContactSubmitting(false);
+    }
+  };
+
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
     if (!formItemId) {
       setFormError("Selecione um item padronizado para a despesa.");
+      return;
+    }
+
+    if (!formContactId) {
+      setFormError("Selecione um contato para a despesa.");
       return;
     }
 
@@ -280,6 +330,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
         issue_date: formIssueDate,
         due_date: formDueDate,
         item_id: formItemId,
+        contact_id: formContactId,
         category_id: formCategoryId || null,
         payment_method_id: formPaymentMethodId || null,
         essentiality: formEssentiality,
@@ -302,6 +353,10 @@ export const Expenses: React.FC<ExpensesProps> = ({
         setFormEssentiality(defaultItem.nature);
       } else {
         setFormItemId("");
+      }
+      const defaultContact = contacts.find((c) => c.is_active) || contacts[0];
+      if (defaultContact) {
+        setFormContactId(defaultContact.id);
       }
       setFormDescription("");
       setFormAmountStr("");
@@ -475,6 +530,20 @@ export const Expenses: React.FC<ExpensesProps> = ({
             ))}
           </select>
 
+          {/* Filtro Contato */}
+          <select
+            value={contactFilter}
+            onChange={(e) => setContactFilter(e.target.value)}
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">Contato: Todos</option>
+            {contacts.map((ct) => (
+              <option key={ct.id} value={ct.id}>
+                {ct.name}
+              </option>
+            ))}
+          </select>
+
           {/* Filtro Essencialidade */}
           <select
             value={essentialityFilter}
@@ -584,8 +653,17 @@ export const Expenses: React.FC<ExpensesProps> = ({
                         )}
                       </div>
 
-                      {/* Metadados: Categoria, Forma de Pagamento, Data */}
+                      {/* Metadados: Contato, Categoria, Forma de Pagamento, Data */}
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                        {expense.contact && (
+                          <>
+                            <span className="inline-flex items-center space-x-1 font-medium text-zinc-700 dark:text-zinc-300">
+                              <Users className="w-3 h-3 text-zinc-400" />
+                              <span>{expense.contact.name}</span>
+                            </span>
+                            <span>&bull;</span>
+                          </>
+                        )}
                         <span>{expense.category?.name || "Sem categoria"}</span>
                         <span>&bull;</span>
                         <span>{expense.payment_method?.name || "Meio não especificado"}</span>
@@ -779,6 +857,41 @@ export const Expenses: React.FC<ExpensesProps> = ({
                   .map((it) => (
                     <option key={it.id} value={it.id}>
                       {it.name} ({it.category?.name || "Sem categoria"} &bull; {ESSENTIALITY_LABELS[it.nature]?.label || it.nature})
+                    </option>
+                  ))
+              )}
+            </select>
+          </div>
+
+          {/* Contato (Obrigatório) */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Contato *
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsQuickContactModalOpen(true)}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Novo Contato</span>
+              </button>
+            </div>
+            <select
+              required
+              value={formContactId}
+              onChange={(e) => setFormContactId(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              {contacts.length === 0 ? (
+                <option value="">Nenhum contato disponível (cadastre um contato)</option>
+              ) : (
+                contacts
+                  .filter((ct) => ct.is_active || ct.id === formContactId)
+                  .map((ct) => (
+                    <option key={ct.id} value={ct.id}>
+                      {ct.name} {ct.phone ? `(${ct.phone})` : ""}
                     </option>
                   ))
               )}
@@ -1092,6 +1205,61 @@ export const Expenses: React.FC<ExpensesProps> = ({
             >
               {isQuickSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Criar Item</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal de Criação Rápida de Contato */}
+      <Modal
+        isOpen={isQuickContactModalOpen}
+        onClose={() => setIsQuickContactModalOpen(false)}
+        title="Novo Contato Rápido"
+        maxWidth="md"
+      >
+        <form onSubmit={handleQuickCreateContact} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Nome do Contato *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Farmácia São Bento, Dr. Roberto, Cemig"
+              value={quickContactName}
+              onChange={(e) => setQuickContactName(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Telefone (Opcional)
+            </label>
+            <input
+              type="text"
+              placeholder="(00) 00000-0000"
+              value={quickContactPhone}
+              onChange={(e) => setQuickContactPhone(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsQuickContactModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isQuickContactSubmitting}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isQuickContactSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>Criar Contato</span>
             </button>
           </div>
         </form>

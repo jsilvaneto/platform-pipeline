@@ -9,6 +9,7 @@ from app.models.expense import Expense
 from app.models.payment import Payment
 from app.models.category import Category
 from app.models.item import Item
+from app.models.contact import Contact
 from app.models.payment_method import PaymentMethod
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseFilter
 
@@ -24,7 +25,7 @@ def _add_months(source_date: date, months: int) -> date:
     return date(year, month, day)
 
 async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) -> Expense:
-    """Cria uma despesa associada a um item obrigatório, herdando categoria e natureza diretamente do item."""
+    """Cria uma despesa associada a um item obrigatório e contato obrigatório, herdando categoria e natureza."""
     # Valida item obrigatório e herda categoria e natureza intrínseca
     item_res = await db.execute(
         select(Item).where(Item.id == data.item_id, Item.user_id == user_id)
@@ -34,6 +35,17 @@ async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) ->
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Item informado é inválido ou não pertence ao usuário."
+        )
+
+    # Valida contato obrigatório
+    contact_res = await db.execute(
+        select(Contact).where(Contact.id == data.contact_id, Contact.user_id == user_id)
+    )
+    contact = contact_res.scalar_one_or_none()
+    if not contact:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Contato informado é inválido ou não pertence ao usuário."
         )
 
     # Categoria e Natureza são estritamente vinculadas e herdadas do item
@@ -67,7 +79,8 @@ async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) ->
     expense = Expense(
         user_id=user_id,
         category_id=target_category_id,
-        item_id=data.item_id,
+        item_id=item.id,
+        contact_id=contact.id,
         payment_method_id=data.payment_method_id,
         description=data.description.strip(),
         total_amount_cents=data.total_amount_cents,
@@ -120,6 +133,7 @@ async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expens
         .options(
             selectinload(Expense.category),
             selectinload(Expense.item).selectinload(Item.category),
+            selectinload(Expense.contact),
             selectinload(Expense.payment_method),
             selectinload(Expense.payments),
         )
@@ -143,6 +157,7 @@ async def list_expenses(
         .options(
             selectinload(Expense.category),
             selectinload(Expense.item).selectinload(Item.category),
+            selectinload(Expense.contact),
             selectinload(Expense.payment_method),
             selectinload(Expense.payments),
         )
@@ -163,6 +178,9 @@ async def list_expenses(
 
     if filter_params.item_id:
         query = query.where(Expense.item_id == filter_params.item_id)
+
+    if filter_params.contact_id:
+        query = query.where(Expense.contact_id == filter_params.contact_id)
 
     if filter_params.payment_method_id:
         query = query.where(Expense.payment_method_id == filter_params.payment_method_id)
@@ -198,6 +216,24 @@ async def update_expense(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="O campo item é obrigatório no lançamento."
+            )
+
+    if data.contact_id is not None:
+        if data.contact_id.strip() != "":
+            contact_res = await db.execute(
+                select(Contact).where(Contact.id == data.contact_id, Contact.user_id == user_id)
+            )
+            contact = contact_res.scalar_one_or_none()
+            if not contact:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Contato informado é inválido ou não pertence ao usuário."
+                )
+            expense.contact_id = contact.id
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O campo contato é obrigatório no lançamento."
             )
 
     if data.category_id is not None:

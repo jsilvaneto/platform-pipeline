@@ -22,6 +22,7 @@ class Expense(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     category_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
     item_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("items.id", ondelete="RESTRICT"), nullable=True, index=True)
+    contact_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("contacts.id", ondelete="RESTRICT"), nullable=True, index=True)
     payment_method_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True, index=True)
 
     description: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
@@ -47,5 +48,6 @@ class Expense(Base):
     user = relationship("User", backref="expenses", lazy="selectin")
     category = relationship("Category", lazy="selectin")
     item = relationship("Item", back_populates="expenses", lazy="selectin")
+    contact = relationship("Contact", back_populates="expenses", lazy="selectin")
     payment_method = relationship("PaymentMethod", lazy="selectin")
     payments = relationship("Payment", back_populates="expense", cascade="all, delete-orphan", lazy="selectin", order_by="Payment.installment_number")

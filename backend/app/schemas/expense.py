@@ -2,6 +2,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict
 from app.schemas.category import CategoryResponse
 from app.schemas.item import ItemResponse
+from app.schemas.contact import ContactResponse
 from app.schemas.payment_method import PaymentMethodResponse
 from app.schemas.payment import PaymentResponse
 
@@ -14,6 +15,7 @@ class ExpenseBase(BaseModel):
     issue_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data da realização da despesa (YYYY-MM-DD)")
     due_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data de vencimento principal (YYYY-MM-DD)")
     category_id: str | None = Field(default=None, description="ID da categoria")
+    contact_id: str | None = Field(default=None, description="ID do contato associado")
     payment_method_id: str | None = Field(default=None, description="ID da forma de pagamento")
     status: ExpenseStatus = Field(default="PENDENTE", description="Status da despesa")
     installments_count: int = Field(default=1, ge=1, le=120, description="Número total de parcelas")
@@ -22,12 +24,14 @@ class ExpenseBase(BaseModel):
 
 class ExpenseCreate(ExpenseBase):
     item_id: str = Field(..., min_length=1, description="ID do item padronizado obrigatório")
+    contact_id: str = Field(..., min_length=1, description="ID do contato associado obrigatório")
     essentiality: EssentialityType | None = Field(default=None, description="Grau de essencialidade (herdado diretamente do item)")
 
 class ExpenseUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=1, max_length=200)
     category_id: str | None = None
     item_id: str | None = None
+    contact_id: str | None = None
     payment_method_id: str | None = None
     essentiality: EssentialityType | None = None
     status: ExpenseStatus | None = None
@@ -38,11 +42,13 @@ class ExpenseResponse(ExpenseBase):
     id: str
     user_id: str
     item_id: str | None = None
+    contact_id: str | None = None
     essentiality: EssentialityType = "NECESSARIO"
     created_at: str
     updated_at: str
     category: CategoryResponse | None = None
     item: ItemResponse | None = None
+    contact: ContactResponse | None = None
     payment_method: PaymentMethodResponse | None = None
     payments: list[PaymentResponse] = []
 
@@ -53,5 +59,6 @@ class ExpenseFilter(BaseModel):
     status: ExpenseStatus | None = None
     category_id: str | None = None
     item_id: str | None = None
+    contact_id: str | None = None
     payment_method_id: str | None = None
     essentiality: EssentialityType | None = None

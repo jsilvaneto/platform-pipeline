@@ -1,6 +1,7 @@
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, Token, TokenData
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
+from app.schemas.contact import ContactCreate, ContactUpdate, ContactResponse, PlannedPaymentItem, ContactSummaryResponse
 from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodUpdate, PaymentMethodResponse
 from app.schemas.payment import PaymentResponse, PaymentStatusUpdate
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseFilter
@@ -18,6 +19,11 @@ __all__ = [
     "ItemCreate",
     "ItemUpdate",
     "ItemResponse",
+    "ContactCreate",
+    "ContactUpdate",
+    "ContactResponse",
+    "PlannedPaymentItem",
+    "ContactSummaryResponse",
     "PaymentMethodCreate",
     "PaymentMethodUpdate",
     "PaymentMethodResponse",

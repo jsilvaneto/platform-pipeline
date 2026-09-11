@@ -7,6 +7,17 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.2.0] - 2026-09-10
+
+### 🚀 Melhorias
+- **Gestão Completa de Contatos & Beneficiários**: Nova entidade `Contact` com campos de nome, e-mail, telefone, observações e status ativo/inativo.
+- **Vínculo Obrigatório de Contato no Lançamento**: Todas as despesas exigem a identificação do contato/beneficiário, com atalho rápido ("+ Novo Contato") diretamente no formulário de despesas.
+- **Visão de Lançamentos & Pagamentos Planejados por Contato**: Nova aba dedicada "Contatos" no menu principal com busca em tempo real, filtro de status, cartões de contato e modal detalhado exibindo métricas financeiras (`total_expenses_cents`, `total_paid_cents`, `total_pending_cents`), histórico completo de despesas e lista cronológica de pagamentos planejados com ação rápida de quitação.
+- **Sementeira Automática "Pessoal"**: Criação automática do contato padrão "Pessoal" para todos os usuários, garantindo transição sem atrito.
+- **Integridade Referencial Estrita**: Bloqueio de exclusão física (`RESTRICT` / HTTP 409 Conflict) de contatos que possuam despesas registradas, orientando para a desativação lógica.
+
+---
+
 ## [1.1.1] - 2026-09-10
 
 ### 🚀 Melhorias

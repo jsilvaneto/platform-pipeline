@@ -8,6 +8,7 @@ from app.database import get_db
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.category import Category
+from app.models.contact import Contact
 from app.models.item import Item
 from app.models.payment_method import PaymentMethod
 from app.models.expense import Expense
@@ -58,6 +59,7 @@ async def get_system_diagnostics(
 
     # Coleta de volumetria do usuário autenticado (e contagem global de usuários)
     cat_count = await db.scalar(select(func.count(Category.id)).where(Category.user_id == current_user.id)) or 0
+    contact_count = await db.scalar(select(func.count(Contact.id)).where(Contact.user_id == current_user.id)) or 0
     item_count = await db.scalar(select(func.count(Item.id)).where(Item.user_id == current_user.id)) or 0
     pm_count = await db.scalar(select(func.count(PaymentMethod.id)).where(PaymentMethod.user_id == current_user.id)) or 0
     exp_count = await db.scalar(select(func.count(Expense.id)).where(Expense.user_id == current_user.id)) or 0
@@ -81,6 +83,7 @@ async def get_system_diagnostics(
         ),
         volumetrics=VolumetricStats(
             total_categories=cat_count,
+            total_contacts=contact_count,
             total_items=item_count,
             total_payment_methods=pm_count,
             total_expenses=exp_count,

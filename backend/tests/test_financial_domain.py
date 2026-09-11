@@ -70,6 +70,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 issue_date="2026-09-07",
                 due_date="2026-09-07",
                 item_id="item-test-123",
+                contact_id="contact-test-123",
             )
 
         with self.assertRaises(ValidationError):
@@ -79,6 +80,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 issue_date="2026-09-07",
                 due_date="2026-09-07",
                 item_id="item-test-123",
+                contact_id="contact-test-123",
             )
 
     def test_expense_schema_date_format_validation(self):
@@ -90,6 +92,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 issue_date="07/09/2026",  # Formato inválido
                 due_date="2026-09-07",
                 item_id="item-test-123",
+                contact_id="contact-test-123",
             )
 
     def test_expense_schema_essentiality_validation(self):
@@ -100,6 +103,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
             issue_date="2026-09-07",
             due_date="2026-09-10",
             item_id="item-test-123",
+            contact_id="contact-test-123",
             essentiality="OBRIGATORIO",
         )
         self.assertEqual(exp.essentiality, "OBRIGATORIO")
@@ -111,6 +115,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 issue_date="2026-09-07",
                 due_date="2026-09-10",
                 item_id="item-test-123",
+                contact_id="contact-test-123",
                 essentiality="INVALIDO",
             )
 
@@ -122,6 +127,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 total_amount_cents=10000,
                 issue_date="2026-09-07",
                 due_date="2026-09-07",
+                contact_id="contact-test-123",
             )
 
         with self.assertRaises(ValidationError):
@@ -131,6 +137,28 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 issue_date="2026-09-07",
                 due_date="2026-09-07",
                 item_id="",
+                contact_id="contact-test-123",
+            )
+
+    def test_expense_schema_requires_contact_id(self):
+        """Garante que o campo contact_id é estritamente obrigatório no cadastro de lançamento."""
+        with self.assertRaises(ValidationError):
+            ExpenseCreate(
+                description="Despesa Sem Contato",
+                total_amount_cents=10000,
+                issue_date="2026-09-07",
+                due_date="2026-09-07",
+                item_id="item-test-123",
+            )
+
+        with self.assertRaises(ValidationError):
+            ExpenseCreate(
+                description="Despesa Com Contato Vazio",
+                total_amount_cents=10000,
+                issue_date="2026-09-07",
+                due_date="2026-09-07",
+                item_id="item-test-123",
+                contact_id="",
             )
 
     def test_category_schema_validation(self):
@@ -183,10 +211,12 @@ class TestFinancialDomainLogic(unittest.TestCase):
             due_date="2026-09-10",
             category_id="cat-123",
             item_id="item-456",
+            contact_id="contact-789",
             essentiality="NECESSARIO",
         )
         self.assertEqual(exp.item_id, "item-456")
         self.assertEqual(exp.category_id, "cat-123")
+        self.assertEqual(exp.contact_id, "contact-789")
 
     def test_item_spending_schema(self):
         """Valida schema analítico de ItemSpending para o dashboard."""

@@ -10,7 +10,7 @@ export type PaymentMethodType =
   | "BOLETO"
   | "OUTRO";
 
-export type NavTab = "inicio" | "registros" | "configuracoes";
+export type NavTab = "inicio" | "registros" | "contatos" | "configuracoes";
 
 export interface User {
   id: string;
@@ -103,6 +103,58 @@ export interface PaymentMethodUpdateInput {
   type?: PaymentMethodType;
 }
 
+export interface Contact {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactCreateInput {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
+}
+
+export interface ContactUpdateInput {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
+}
+
+export interface PlannedPaymentItem {
+  payment_id: string;
+  expense_id: string;
+  description: string;
+  installment_number: number;
+  installments_count: number;
+  amount_cents: number;
+  due_date: string;
+  status: ExpenseStatus;
+  category_name: string;
+  category_color: string;
+  item_name: string;
+  payment_method_name: string | null;
+}
+
+export interface ContactSummaryResponse {
+  contact: Contact;
+  total_expenses_cents: number;
+  total_paid_cents: number;
+  total_pending_cents: number;
+  expenses_count: number;
+  planned_payments: PlannedPaymentItem[];
+}
+
 export interface Payment {
   id: string;
   user_id: string;
@@ -126,6 +178,7 @@ export interface Expense {
   user_id: string;
   category_id: string | null;
   item_id: string | null;
+  contact_id: string | null;
   payment_method_id: string | null;
   description: string;
   total_amount_cents: number;
@@ -140,6 +193,7 @@ export interface Expense {
   updated_at: string;
   category?: Category | null;
   item?: Item | null;
+  contact?: Contact | null;
   payment_method?: PaymentMethod | null;
   payments: Payment[];
 }
@@ -150,6 +204,7 @@ export interface ExpenseCreateInput {
   issue_date: string;
   due_date: string;
   item_id: string;
+  contact_id: string;
   category_id?: string | null;
   payment_method_id?: string | null;
   essentiality?: EssentialityType;
@@ -163,6 +218,7 @@ export interface ExpenseUpdateInput {
   description?: string;
   category_id?: string | null;
   item_id?: string | null;
+  contact_id?: string | null;
   payment_method_id?: string | null;
   essentiality?: EssentialityType;
   status?: ExpenseStatus;
@@ -175,6 +231,7 @@ export interface ExpenseFilterParams {
   status?: ExpenseStatus;
   category_id?: string;
   item_id?: string;
+  contact_id?: string;
   payment_method_id?: string;
   essentiality?: EssentialityType;
 }
@@ -255,6 +312,7 @@ export interface DatabaseDiagnostics {
 
 export interface VolumetricStats {
   total_categories: number;
+  total_contacts?: number;
   total_items: number;
   total_payment_methods: number;
   total_expenses: number;

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Expenses } from "./pages/Expenses";
+import { Contacts } from "./pages/Contacts";
 import { Settings } from "./pages/Settings";
 import { Layout } from "./components/Layout";
 import { NavTab } from "./types";
@@ -49,6 +50,7 @@ const MainApp: React.FC = () => {
           onCloseCreateModalExternal={() => setIsExpenseModalRequested(false)}
         />
       )}
+      {currentTab === "contatos" && <Contacts />}
       {currentTab === "configuracoes" && <Settings />}
     </Layout>
   );

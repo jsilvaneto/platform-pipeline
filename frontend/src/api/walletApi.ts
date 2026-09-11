@@ -3,6 +3,10 @@ import {
   Category,
   CategoryCreateInput,
   CategoryUpdateInput,
+  Contact,
+  ContactCreateInput,
+  ContactUpdateInput,
+  ContactSummaryResponse,
   Item,
   ItemCreateInput,
   ItemUpdateInput,
@@ -44,6 +48,36 @@ export const walletApi = {
 
   async deleteCategory(id: string): Promise<void> {
     await api.delete(`/categories/${id}`);
+  },
+
+  // Contatos
+  async getContacts(params?: { active_only?: boolean; search?: string }): Promise<Contact[]> {
+    const { data } = await api.get<Contact[]>("/contacts/", { params });
+    return data;
+  },
+
+  async getContact(id: string): Promise<Contact> {
+    const { data } = await api.get<Contact>(`/contacts/${id}`);
+    return data;
+  },
+
+  async getContactSummary(id: string): Promise<ContactSummaryResponse> {
+    const { data } = await api.get<ContactSummaryResponse>(`/contacts/${id}/summary`);
+    return data;
+  },
+
+  async createContact(input: ContactCreateInput): Promise<Contact> {
+    const { data } = await api.post<Contact>("/contacts/", input);
+    return data;
+  },
+
+  async updateContact(id: string, input: ContactUpdateInput): Promise<Contact> {
+    const { data } = await api.put<Contact>(`/contacts/${id}`, input);
+    return data;
+  },
+
+  async deleteContact(id: string): Promise<void> {
+    await api.delete(`/contacts/${id}`);
   },
 
   // Itens de Despesa

@@ -22,6 +22,8 @@ async def list_expenses(
     month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$", description="Filtrar por mês de competência (YYYY-MM)"),
     status_filter: ExpenseStatus | None = Query(default=None, alias="status", description="Filtrar por status"),
     category_id: str | None = Query(default=None, description="Filtrar por ID da categoria"),
+    item_id: str | None = Query(default=None, description="Filtrar por ID do item"),
+    contact_id: str | None = Query(default=None, description="Filtrar por ID do contato"),
     payment_method_id: str | None = Query(default=None, description="Filtrar por forma de pagamento"),
     essentiality: EssentialityType | None = Query(default=None, description="Filtrar por essencialidade"),
     db: AsyncSession = Depends(get_db),
@@ -32,6 +34,8 @@ async def list_expenses(
         month=month,
         status=status_filter,
         category_id=category_id,
+        item_id=item_id,
+        contact_id=contact_id,
         payment_method_id=payment_method_id,
         essentiality=essentiality,
     )

@@ -1,13 +1,14 @@
 import uuid
 import pytest
-from app.database import AsyncSessionLocal
+from app.database import AsyncSessionLocal, engine
 from app.models.user import User
 from app.models.category import Category
+from app.models.contact import Contact
 from app.models.item import Item
 from app.models.expense import Expense
 from app.schemas.item import ItemCreate, ItemUpdate
 from app.schemas.expense import ExpenseCreate
-from app.services import item_service, expense_service, category_service
+from app.services import item_service, expense_service, category_service, contact_service
 from fastapi import HTTPException
 
 @pytest.mark.asyncio
@@ -31,10 +32,14 @@ async def test_item_crud_and_expense_association_with_zero_residue():
             initial_items = await item_service.list_items(session, user_id)
             assert len(initial_items) > 0
 
-            # 2. Busca uma categoria criada automaticamente
+            # 2. Busca uma categoria criada automaticamente e garante contato padrão
             cats = await category_service.list_categories(session, user_id)
             assert len(cats) > 0
             first_cat = cats[0]
+
+            contacts = await contact_service.list_contacts(session, user_id)
+            assert len(contacts) > 0
+            first_contact = contacts[0]
 
             # 3. Criação de item customizado
             new_item_data = ItemCreate(
@@ -65,6 +70,7 @@ async def test_item_crud_and_expense_association_with_zero_residue():
                 issue_date="2026-09-10",
                 due_date="2026-09-10",
                 item_id=created_item.id,
+                contact_id=first_contact.id,
                 # Não informa category_id nem essentiality para testar a herança automática
             )
             created_expense = await expense_service.create_expense(session, user_id, expense_data)
@@ -94,5 +100,7 @@ async def test_item_crud_and_expense_association_with_zero_residue():
             await session.execute(Expense.__table__.delete().where(Expense.user_id == user_id))
             await session.execute(Item.__table__.delete().where(Item.user_id == user_id))
             await session.execute(Category.__table__.delete().where(Category.user_id == user_id))
+            await session.execute(Contact.__table__.delete().where(Contact.user_id == user_id))
             await session.execute(User.__table__.delete().where(User.id == user_id))
             await session.commit()
+            await engine.dispose()
