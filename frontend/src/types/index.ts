@@ -59,6 +59,32 @@ export interface CategoryUpdateInput {
   color?: string;
 }
 
+export interface Item {
+  id: string;
+  user_id: string;
+  category_id: string;
+  name: string;
+  nature: EssentialityType;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  category?: Category | null;
+}
+
+export interface ItemCreateInput {
+  name: string;
+  category_id: string;
+  nature?: EssentialityType;
+  is_active?: boolean;
+}
+
+export interface ItemUpdateInput {
+  name?: string;
+  category_id?: string;
+  nature?: EssentialityType;
+  is_active?: boolean;
+}
+
 export interface PaymentMethod {
   id: string;
   user_id: string;
@@ -99,6 +125,7 @@ export interface Expense {
   id: string;
   user_id: string;
   category_id: string | null;
+  item_id: string | null;
   payment_method_id: string | null;
   description: string;
   total_amount_cents: number;
@@ -112,6 +139,7 @@ export interface Expense {
   created_at: string;
   updated_at: string;
   category?: Category | null;
+  item?: Item | null;
   payment_method?: PaymentMethod | null;
   payments: Payment[];
 }
@@ -122,6 +150,7 @@ export interface ExpenseCreateInput {
   issue_date: string;
   due_date: string;
   category_id?: string | null;
+  item_id?: string | null;
   payment_method_id?: string | null;
   essentiality?: EssentialityType;
   status?: ExpenseStatus;
@@ -133,6 +162,7 @@ export interface ExpenseCreateInput {
 export interface ExpenseUpdateInput {
   description?: string;
   category_id?: string | null;
+  item_id?: string | null;
   payment_method_id?: string | null;
   essentiality?: EssentialityType;
   status?: ExpenseStatus;
@@ -144,6 +174,7 @@ export interface ExpenseFilterParams {
   month?: string; // YYYY-MM
   status?: ExpenseStatus;
   category_id?: string;
+  item_id?: string;
   payment_method_id?: string;
   essentiality?: EssentialityType;
 }
@@ -153,6 +184,15 @@ export interface CategorySpending {
   category_name: string;
   color: string;
   icon: string;
+  total_cents: number;
+  percentage: number;
+}
+
+export interface ItemSpending {
+  item_id: string | null;
+  item_name: string;
+  category_name: string;
+  nature: EssentialityType;
   total_cents: number;
   percentage: number;
 }
@@ -192,6 +232,7 @@ export interface DashboardMetrics {
   total_overdue_cents: number;
   monthly_breakdown: MonthlySpending[];
   by_category: CategorySpending[];
+  by_item: ItemSpending[];
   by_essentiality: EssentialitySpending[];
   upcoming_payments: UpcomingPayment[];
 }
@@ -214,6 +255,7 @@ export interface DatabaseDiagnostics {
 
 export interface VolumetricStats {
   total_categories: number;
+  total_items: number;
   total_payment_methods: number;
   total_expenses: number;
   total_payments: number;

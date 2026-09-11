@@ -20,8 +20,10 @@ import { Modal } from "../components/Modal";
 import {
   Expense,
   Category,
+  Item,
   PaymentMethod,
   ExpenseCreateInput,
+  ItemCreateInput,
   EssentialityType,
   ExpenseStatus,
 } from "../types";
@@ -61,10 +63,12 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "ALL">("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [itemFilter, setItemFilter] = useState<string>("ALL");
   const [essentialityFilter, setEssentialityFilter] = useState<EssentialityType | "ALL">("ALL");
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +78,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [expandedExpenseIds, setExpandedExpenseIds] = useState<Set<string>>(new Set());
 
   // Form states
+  const [formItemId, setFormItemId] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formAmountStr, setFormAmountStr] = useState<string>("");
   const [formIssueDate, setFormIssueDate] = useState<string>(today.toISOString().split("T")[0]);
@@ -86,6 +91,13 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [formNotes, setFormNotes] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Quick Create Item states
+  const [isQuickItemModalOpen, setIsQuickItemModalOpen] = useState<boolean>(false);
+  const [quickItemName, setQuickItemName] = useState<string>("");
+  const [quickItemCategoryId, setQuickItemCategoryId] = useState<string>("");
+  const [quickItemNature, setQuickItemNature] = useState<EssentialityType>("NECESSARIO");
+  const [isQuickSubmitting, setIsQuickSubmitting] = useState<boolean>(false);
+
   // Sincroniza abertura de modal disparada de fora (ex: atalhos do Dashboard)
   useEffect(() => {
     if (isCreateModalOpenExternal) {
@@ -97,18 +109,21 @@ export const Expenses: React.FC<ExpensesProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const [expData, catData, pmData] = await Promise.all([
+      const [expData, catData, itmData, pmData] = await Promise.all([
         walletApi.getExpenses({
           month: selectedMonth,
           status: statusFilter !== "ALL" ? statusFilter : undefined,
           category_id: categoryFilter !== "ALL" ? categoryFilter : undefined,
+          item_id: itemFilter !== "ALL" ? itemFilter : undefined,
           essentiality: essentialityFilter !== "ALL" ? essentialityFilter : undefined,
         }),
         walletApi.getCategories(),
+        walletApi.getItems(),
         walletApi.getPaymentMethods(),
       ]);
       setExpenses(expData);
       setCategories(catData);
+      setItems(itmData);
       setPaymentMethods(pmData);
 
       if (catData.length > 0 && !formCategoryId) {
@@ -117,12 +132,12 @@ export const Expenses: React.FC<ExpensesProps> = ({
       if (pmData.length > 0 && !formPaymentMethodId) {
         setFormPaymentMethodId(pmData[0].id);
       }
-    } catch (err: unknown) {
+    } catch {
       setError("Não foi possível carregar as despesas. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
-  }, [selectedMonth, statusFilter, categoryFilter, essentialityFilter]);
+  }, [selectedMonth, statusFilter, categoryFilter, itemFilter, essentialityFilter]);
 
   useEffect(() => {
     loadData();
@@ -185,6 +200,46 @@ export const Expenses: React.FC<ExpensesProps> = ({
     return Math.round(valFloat * 100);
   };
 
+  const handleSelectItem = (itemId: string) => {
+    setFormItemId(itemId);
+    if (!itemId) return;
+    const selectedItem = items.find((it) => it.id === itemId);
+    if (selectedItem) {
+      setFormCategoryId(selectedItem.category_id);
+      setFormEssentiality(selectedItem.nature);
+      if (!formDescription.trim()) {
+        setFormDescription(selectedItem.name);
+      }
+    }
+  };
+
+  const handleQuickCreateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickItemName.trim()) return;
+    const targetCatId = quickItemCategoryId || (categories.length > 0 ? categories[0].id : "");
+    if (!targetCatId) return;
+
+    setIsQuickSubmitting(true);
+    try {
+      const payload: ItemCreateInput = {
+        name: quickItemName.trim(),
+        category_id: targetCatId,
+        nature: quickItemNature,
+        is_active: true,
+      };
+      const created = await walletApi.createItem(payload);
+      const updatedItems = await walletApi.getItems();
+      setItems(updatedItems);
+      handleSelectItem(created.id);
+      setIsQuickItemModalOpen(false);
+      setQuickItemName("");
+    } catch {
+      alert("Erro ao cadastrar novo item rápido.");
+    } finally {
+      setIsQuickSubmitting(false);
+    }
+  };
+
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -207,6 +262,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
         issue_date: formIssueDate,
         due_date: formDueDate,
         category_id: formCategoryId || null,
+        item_id: formItemId || null,
         payment_method_id: formPaymentMethodId || null,
         essentiality: formEssentiality,
         status: "PENDENTE",
@@ -221,13 +277,14 @@ export const Expenses: React.FC<ExpensesProps> = ({
         onCloseCreateModalExternal();
       }
       // Limpa formulário
+      setFormItemId("");
       setFormDescription("");
       setFormAmountStr("");
       setFormInstallments(1);
       setFormIsRecurring(false);
       setFormNotes("");
       loadData();
-    } catch (err: unknown) {
+    } catch {
       setFormError("Erro ao salvar a despesa. Verifique os campos informados.");
     } finally {
       setIsSubmitting(false);
@@ -372,6 +429,20 @@ export const Expenses: React.FC<ExpensesProps> = ({
             ))}
           </select>
 
+          {/* Filtro Item */}
+          <select
+            value={itemFilter}
+            onChange={(e) => setItemFilter(e.target.value)}
+            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">Item: Todos</option>
+            {items.map((it) => (
+              <option key={it.id} value={it.id}>
+                {it.name}
+              </option>
+            ))}
+          </select>
+
           {/* Filtro Essencialidade */}
           <select
             value={essentialityFilter}
@@ -457,6 +528,13 @@ export const Expenses: React.FC<ExpensesProps> = ({
                         <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">
                           {expense.description}
                         </h4>
+
+                        {/* Tag Item Padronizado */}
+                        {expense.item && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            {expense.item.name}
+                          </span>
+                        )}
 
                         {/* Tag Essencialidade */}
                         <span
@@ -635,6 +713,41 @@ export const Expenses: React.FC<ExpensesProps> = ({
               {formError}
             </div>
           )}
+
+          {/* Item Padronizado */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Item Padronizado (Opcional)
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickItemCategoryId(formCategoryId || (categories[0]?.id ?? ""));
+                  setQuickItemNature(formEssentiality);
+                  setIsQuickItemModalOpen(true);
+                }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Novo Item</span>
+              </button>
+            </div>
+            <select
+              value={formItemId}
+              onChange={(e) => handleSelectItem(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Nenhum item selecionado (Livre)</option>
+              {items
+                .filter((it) => it.is_active || it.id === formItemId)
+                .map((it) => (
+                  <option key={it.id} value={it.id}>
+                    {it.name} ({it.category?.name || "Sem categoria"} - {ESSENTIALITY_LABELS[it.nature]?.label || it.nature})
+                  </option>
+                ))}
+            </select>
+          </div>
 
           {/* Descrição */}
           <div>
@@ -819,6 +932,81 @@ export const Expenses: React.FC<ExpensesProps> = ({
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Salvar Despesa</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Criação Rápida de Item */}
+      <Modal
+        isOpen={isQuickItemModalOpen}
+        onClose={() => setIsQuickItemModalOpen(false)}
+        title="Novo Item Padronizado"
+        maxWidth="md"
+      >
+        <form onSubmit={handleQuickCreateItem} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Nome do Item *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Arroz, Gasolina, Netflix, Aluguel"
+              value={quickItemName}
+              onChange={(e) => setQuickItemName(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Categoria Vinculada *
+            </label>
+            <select
+              value={quickItemCategoryId}
+              onChange={(e) => setQuickItemCategoryId(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Natureza do Item *
+            </label>
+            <select
+              value={quickItemNature}
+              onChange={(e) => setQuickItemNature(e.target.value as EssentialityType)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="OBRIGATORIO">Obrigatório</option>
+              <option value="NECESSARIO">Necessário</option>
+              <option value="DESEJO">Desejo</option>
+              <option value="NENHUM">Nenhum / Geral</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsQuickItemModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isQuickSubmitting}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isQuickSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>Criar Item</span>
             </button>
           </div>
         </form>

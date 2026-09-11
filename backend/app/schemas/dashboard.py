@@ -31,6 +31,14 @@ class MonthlySpending(BaseModel):
     paid_cents: int = Field(default=0, description="Total pago do mês em centavos")
     pending_cents: int = Field(default=0, description="Total a pagar do mês em centavos")
 
+class ItemSpending(BaseModel):
+    item_id: str | None = None
+    item_name: str
+    category_name: str
+    nature: str
+    total_cents: int
+    percentage: float
+
 class DashboardMetrics(BaseModel):
     period: str = Field(..., description="Período de referência (Ano ou Ano-Mês)")
     year: int = Field(..., description="Ano de referência (ex: 2026)")
@@ -40,6 +48,8 @@ class DashboardMetrics(BaseModel):
     total_overdue_cents: int = Field(default=0, description="Total vencido e não pago em centavos")
     monthly_breakdown: list[MonthlySpending] = []
     by_category: list[CategorySpending] = []
+    by_item: list[ItemSpending] = []
     by_essentiality: list[EssentialitySpending] = []
     upcoming_payments: list[UpcomingPayment] = []
+
 

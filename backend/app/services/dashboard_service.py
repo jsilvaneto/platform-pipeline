@@ -9,6 +9,7 @@ from app.schemas.dashboard import (
     DashboardMetrics,
     MonthlySpending,
     CategorySpending,
+    ItemSpending,
     EssentialitySpending,
     UpcomingPayment,
 )
@@ -37,12 +38,13 @@ async def get_dashboard_metrics(
         period = str(target_year)
         prefix_filter = f"{target_year}-"
 
-    # Busca todas as parcelas do usuário no período com dados da despesa e categoria
+    # Busca todas as parcelas do usuário no período com dados da despesa, categoria e item
     query = (
         select(Payment)
         .join(Payment.expense)
         .options(
             selectinload(Payment.expense).selectinload(Expense.category),
+            selectinload(Payment.expense).selectinload(Expense.item),
         )
         .where(
             Payment.user_id == user_id,
@@ -127,6 +129,39 @@ async def get_dashboard_metrics(
     ]
     by_category.sort(key=lambda x: x.total_cents, reverse=True)
 
+    # Agrupamento por item padronizado
+    item_map: dict[str, dict] = {}
+    for p in payments:
+        it = p.expense.item
+        cat = p.expense.category
+        item_id = it.id if it else "sem_item"
+        item_name = it.name if it else p.expense.description
+        category_name = cat.name if cat else "Geral"
+        nature = it.nature if it else p.expense.essentiality
+
+        if item_id not in item_map:
+            item_map[item_id] = {
+                "item_id": item_id if item_id != "sem_item" else None,
+                "item_name": item_name,
+                "category_name": category_name,
+                "nature": nature,
+                "total_cents": 0,
+            }
+        item_map[item_id]["total_cents"] += p.amount_cents
+
+    by_item = [
+        ItemSpending(
+            item_id=v["item_id"],
+            item_name=v["item_name"],
+            category_name=v["category_name"],
+            nature=v["nature"],
+            total_cents=v["total_cents"],
+            percentage=round((v["total_cents"] / total_expenses_cents * 100), 1) if total_expenses_cents > 0 else 0.0,
+        )
+        for v in item_map.values()
+    ]
+    by_item.sort(key=lambda x: x.total_cents, reverse=True)
+
     # Agrupamento por essencialidade
     ess_map: dict[str, int] = {
         "OBRIGATORIO": 0,
@@ -191,7 +226,7 @@ async def get_dashboard_metrics(
         total_overdue_cents=total_overdue_cents,
         monthly_breakdown=monthly_breakdown,
         by_category=by_category,
+        by_item=by_item,
         by_essentiality=by_essentiality,
         upcoming_payments=upcoming_payments,
     )
-

@@ -15,6 +15,7 @@ import {
   BarChart3,
   TrendingUp,
   RotateCcw,
+  Layers,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import { DashboardMetrics, UpcomingPayment, MonthlySpending } from "../types";
@@ -551,6 +552,85 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Seção: Top Itens de Despesa no Ano */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-indigo-500" />
+              <span>Top Itens de Despesa ({selectedYear})</span>
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Concentração e padronização dos maiores centros de custo
+            </p>
+          </div>
+          <button
+            onClick={onNavigateToRegistros}
+            className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center space-x-1"
+          >
+            <span>Ver lançamentos</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {metrics?.by_item && metrics.by_item.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            {metrics.by_item.slice(0, 8).map((item, idx) => {
+              const natureInfo = ESSENTIALITY_NAME_MAP[item.nature] || ESSENTIALITY_NAME_MAP["NENHUM"];
+              return (
+                <div
+                  key={item.item_id || `${item.item_name}-${idx}`}
+                  className="p-3.5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 space-y-2 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center space-x-2.5">
+                      <span className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center shrink-0 border border-indigo-200 dark:border-indigo-800">
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                          {item.item_name}
+                        </span>
+                        <div className="flex items-center space-x-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                          <span>{item.category_name}</span>
+                          <span>&bull;</span>
+                          <span
+                            className="font-medium"
+                            style={{ color: natureInfo.color }}
+                          >
+                            {natureInfo.label}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                        {formatCurrency(item.total_cents)}
+                      </span>
+                      <span className="text-[10px] text-zinc-400">
+                        {item.percentage}% do ano
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-8 text-center text-zinc-400 text-xs">
+            Nenhum item com despesas registradas em {selectedYear}.
+          </div>
+        )}
       </div>
 
       {/* Seção Inferior: Próximos Vencimentos a Pagar (Largura Completa) */}

@@ -16,6 +16,7 @@ class DatabaseDiagnostics(BaseModel):
 
 class VolumetricStats(BaseModel):
     total_categories: int
+    total_items: int = 0
     total_payment_methods: int
     total_expenses: int
     total_payments: int

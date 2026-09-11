@@ -7,6 +7,19 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.1.0] - 2026-09-10
+
+### 🚀 Melhorias
+- **Entidade de Itens Padronizados**: Implementação completa da entidade `Item` associada à categoria e com natureza/essencialidade explícita (`OBRIGATORIO`, `NECESSARIO`, `DESEJO`, `NENHUM`).
+- **Padronização de Lançamentos & Centros de Custo**: Despesas vinculadas a itens para sanar disparidades de descrições manuais e possibilitar relatórios analíticos homogêneos.
+- **Herança Automática Inteligente**: Ao selecionar um item padronizado no cadastro de despesa, a categoria e a essencialidade são preenchidas automaticamente.
+- **Cadastro Rápido de Itens**: Criação de itens instantânea ("Novo Item") direto do formulário de despesa ou pela aba dedicada em Configurações.
+- **Top Itens no Dashboard**: Ranking analítico e distribuição Pareto dos maiores centros de custo no ano com métricas percentuais e identificadores visuais.
+- **Integridade Referencial Estrita**: Bloqueio de exclusão (`RESTRICT` / HTTP 409) de itens vinculados a lançamentos passados, incentivando a desativação lógica (`is_active = False`).
+- **Sementeira Automática**: Geração automática de itens essenciais padrão por categoria para novos e existentes usuários.
+
+---
+
 ## [1.0.1] - 2026-09-08
 
 ### 🚀 Melhorias

@@ -29,6 +29,8 @@ import {
   Sparkles,
   Calendar,
   Wrench,
+  ListChecks,
+  Search,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import { Modal } from "../components/Modal";
@@ -39,6 +41,10 @@ import {
   PaymentMethod,
   PaymentMethodType,
   User,
+  Item,
+  ItemCreateInput,
+  ItemUpdateInput,
+  EssentialityType,
   CategoryCreateInput,
   PaymentMethodCreateInput,
   UserCreateInput,
@@ -46,6 +52,32 @@ import {
   VersionRelease,
 } from "../types";
 import { formatDate } from "../utils/format";
+
+const NATURE_CONFIG: Record<
+  EssentialityType,
+  { label: string; color: string; desc: string }
+> = {
+  OBRIGATORIO: {
+    label: "Obrigatório",
+    desc: "Essencial e inadiável (moradia, água, luz)",
+    color: "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
+  },
+  NECESSARIO: {
+    label: "Necessário",
+    desc: "Importante para manutenção diária (alimentação, transporte)",
+    color: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+  },
+  DESEJO: {
+    label: "Desejo",
+    desc: "Estilo de vida, conforto e lazer (restaurantes, viagens)",
+    color: "bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800",
+  },
+  NENHUM: {
+    label: "Geral",
+    desc: "Sem classificação específica ou eventual",
+    color: "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
+  },
+};
 
 const COLOR_PRESETS = [
   "#ef4444", // Vermelho
@@ -137,9 +169,10 @@ const getPaymentMethodIcon = (type: PaymentMethodType) => {
 
 export const Settings: React.FC = () => {
   const { user: currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<"categories" | "payment_methods" | "users" | "system">("categories");
+  const [activeTab, setActiveTab] = useState<"categories" | "items" | "payment_methods" | "users" | "system">("categories");
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [diagnostics, setDiagnostics] = useState<SystemDiagnosticsResponse | null>(null);
@@ -149,6 +182,11 @@ export const Settings: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDiagLoading, setIsDiagLoading] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Filtros da aba de Itens
+  const [itemSearch, setItemSearch] = useState<string>("");
+  const [itemCategoryFilter, setItemCategoryFilter] = useState<string>("ALL");
+  const [itemNatureFilter, setItemNatureFilter] = useState<EssentialityType | "ALL">("ALL");
 
   // Modal Category
   const [isCatModalOpen, setIsCatModalOpen] = useState<boolean>(false);
@@ -160,6 +198,21 @@ export const Settings: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCatName, setEditCatName] = useState<string>("");
   const [editCatColor, setEditCatColor] = useState<string>("#2563eb");
+
+  // Modal Item
+  const [isItemModalOpen, setIsItemModalOpen] = useState<boolean>(false);
+  const [newItemName, setNewItemName] = useState<string>("");
+  const [newItemCategoryId, setNewItemCategoryId] = useState<string>("");
+  const [newItemNature, setNewItemNature] = useState<EssentialityType>("NECESSARIO");
+  const [newItemIsActive, setNewItemIsActive] = useState<boolean>(true);
+
+  // Modal Edit Item
+  const [isEditItemModalOpen, setIsEditItemModalOpen] = useState<boolean>(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editItemName, setEditItemName] = useState<string>("");
+  const [editItemCategoryId, setEditItemCategoryId] = useState<string>("");
+  const [editItemNature, setEditItemNature] = useState<EssentialityType>("NECESSARIO");
+  const [editItemIsActive, setEditItemIsActive] = useState<boolean>(true);
 
   // Modal Payment Method
   const [isPmModalOpen, setIsPmModalOpen] = useState<boolean>(false);
@@ -190,12 +243,18 @@ export const Settings: React.FC = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [cats, pms] = await Promise.all([
+      const [cats, itms, pms] = await Promise.all([
         walletApi.getCategories(),
+        walletApi.getItems(),
         walletApi.getPaymentMethods(),
       ]);
       setCategories(cats);
+      setItems(itms);
       setPaymentMethods(pms);
+
+      if (cats.length > 0 && !newItemCategoryId) {
+        setNewItemCategoryId(cats[0].id);
+      }
 
       // Carrega usuários se for administrador
       if (currentUser?.is_admin) {
@@ -328,6 +387,120 @@ export const Settings: React.FC = () => {
       loadData();
     } catch {
       showFeedback("error", "Erro ao excluir categoria.");
+    }
+  };
+
+  // --- Handlers de Itens de Despesa ---
+  const handleCreateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemName.trim()) {
+      showFeedback("error", "O nome do item é obrigatório.");
+      return;
+    }
+    if (!newItemCategoryId) {
+      showFeedback("error", "Selecione uma categoria para o item.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const payload: ItemCreateInput = {
+        name: newItemName.trim(),
+        category_id: newItemCategoryId,
+        nature: newItemNature,
+        is_active: newItemIsActive,
+      };
+      await walletApi.createItem(payload);
+      setIsItemModalOpen(false);
+      setNewItemName("");
+      setNewItemNature("NECESSARIO");
+      setNewItemIsActive(true);
+      showFeedback("success", "Item de despesa cadastrado com sucesso!");
+      loadData();
+    } catch (err: unknown) {
+      let msg = "Erro ao cadastrar item de despesa.";
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const responseData = (err as { response?: { data?: { detail?: string } } }).response?.data;
+        if (responseData?.detail) {
+          msg = responseData.detail;
+        }
+      }
+      showFeedback("error", msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEditItem = (item: Item) => {
+    setEditingItem(item);
+    setEditItemName(item.name);
+    setEditItemCategoryId(item.category_id);
+    setEditItemNature(item.nature);
+    setEditItemIsActive(item.is_active);
+    setIsEditItemModalOpen(true);
+  };
+
+  const handleUpdateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem || !editItemName.trim()) {
+      showFeedback("error", "O nome do item é obrigatório.");
+      return;
+    }
+    if (!editItemCategoryId) {
+      showFeedback("error", "Selecione uma categoria.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const payload: ItemUpdateInput = {
+        name: editItemName.trim(),
+        category_id: editItemCategoryId,
+        nature: editItemNature,
+        is_active: editItemIsActive,
+      };
+      await walletApi.updateItem(editingItem.id, payload);
+      setIsEditItemModalOpen(false);
+      setEditingItem(null);
+      showFeedback("success", `Item "${editItemName.trim()}" atualizado com sucesso!`);
+      loadData();
+    } catch (err: unknown) {
+      let msg = "Erro ao atualizar item.";
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const responseData = (err as { response?: { data?: { detail?: string } } }).response?.data;
+        if (responseData?.detail) {
+          msg = responseData.detail;
+        }
+      }
+      showFeedback("error", msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteItem = async (id: string, name: string) => {
+    if (!window.confirm(`Deseja excluir o item "${name}"?`)) return;
+    try {
+      await walletApi.deleteItem(id);
+      showFeedback("success", "Item excluído com sucesso.");
+      loadData();
+    } catch (err: unknown) {
+      let msg = "Erro ao excluir item.";
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const responseData = (err as { response?: { data?: { detail?: string } } }).response?.data;
+        if (responseData?.detail) {
+          msg = responseData.detail;
+        }
+      }
+      showFeedback("error", msg);
+    }
+  };
+
+  const handleToggleItemActive = async (item: Item) => {
+    try {
+      await walletApi.updateItem(item.id, { is_active: !item.is_active });
+      showFeedback("success", `Item ${item.is_active ? "desativado" : "ativado"} com sucesso.`);
+      loadData();
+    } catch {
+      showFeedback("error", "Erro ao alterar status do item.");
     }
   };
 
@@ -535,6 +708,21 @@ export const Settings: React.FC = () => {
           </button>
         )}
 
+        {activeTab === "items" && (
+          <button
+            onClick={() => {
+              if (categories.length > 0 && !newItemCategoryId) {
+                setNewItemCategoryId(categories[0].id);
+              }
+              setIsItemModalOpen(true);
+            }}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Novo Item</span>
+          </button>
+        )}
+
         {activeTab === "payment_methods" && (
           <button
             onClick={() => setIsPmModalOpen(true)}
@@ -585,7 +773,7 @@ export const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* Abas de Navegação (com Aba de Sistema & Infraestrutura) */}
+      {/* Abas de Navegação */}
       <div className="flex flex-wrap gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2">
         <button
           onClick={() => setActiveTab("categories")}
@@ -597,6 +785,18 @@ export const Settings: React.FC = () => {
         >
           <Tag className="w-4 h-4" />
           <span>Categorias ({categories.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("items")}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            activeTab === "items"
+              ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+              : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          }`}
+        >
+          <ListChecks className="w-4 h-4" />
+          <span>Itens de Despesa ({items.length})</span>
         </button>
 
         <button
@@ -716,8 +916,160 @@ export const Settings: React.FC = () => {
             </tbody>
           </table>
         </div>
+      ) : activeTab === "items" ? (
+        /* Aba 2: Tabela de Itens de Despesa */
+        <div className="space-y-4">
+          {/* Barra de Filtros e Busca de Itens */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs">
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Buscar item por nome..."
+                value={itemSearch}
+                onChange={(e) => setItemSearch(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-9 pr-3.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <select
+                value={itemCategoryFilter}
+                onChange={(e) => setItemCategoryFilter(e.target.value)}
+                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">Todas as Categorias</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={itemNatureFilter}
+                onChange={(e) => setItemNatureFilter(e.target.value as EssentialityType | "ALL")}
+                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">Todas as Naturezas</option>
+                <option value="OBRIGATORIO">Obrigatório</option>
+                <option value="NECESSARIO">Necessário</option>
+                <option value="DESEJO">Desejo</option>
+                <option value="NENHUM">Geral</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Tabela de Itens */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Item Padronizado</th>
+                  <th className="py-3.5 px-4">Categoria Vinculada</th>
+                  <th className="py-3.5 px-4">Natureza / Essencialidade</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
+                {items
+                  .filter((it) => {
+                    const matchesSearch = it.name.toLowerCase().includes(itemSearch.toLowerCase());
+                    const matchesCat = itemCategoryFilter === "ALL" || it.category_id === itemCategoryFilter;
+                    const matchesNat = itemNatureFilter === "ALL" || it.nature === itemNatureFilter;
+                    return matchesSearch && matchesCat && matchesNat;
+                  })
+                  .map((it) => {
+                    const natCfg = NATURE_CONFIG[it.nature] || NATURE_CONFIG.NENHUM;
+                    return (
+                      <tr
+                        key={it.id}
+                        className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors ${
+                          !it.is_active ? "opacity-60" : ""
+                        }`}
+                      >
+                        <td className="py-3.5 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                          <div className="flex items-center space-x-2.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-500" />
+                            <span>{it.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border"
+                            style={{
+                              borderColor: `${it.category?.color || "#6366f1"}40`,
+                              backgroundColor: `${it.category?.color || "#6366f1"}15`,
+                              color: it.category?.color || "#6366f1",
+                            }}
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full"
+                              style={{ backgroundColor: it.category?.color || "#6366f1" }}
+                            />
+                            <span>{it.category?.name || "Sem Categoria"}</span>
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${natCfg.color}`}
+                          >
+                            {natCfg.label}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <button
+                            onClick={() => handleToggleItemActive(it)}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer transition-colors ${
+                              it.is_active
+                                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100"
+                                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200"
+                            }`}
+                            title={it.is_active ? "Clique para desativar" : "Clique para ativar"}
+                          >
+                            {it.is_active ? "Ativo" : "Inativo"}
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-1">
+                          <button
+                            onClick={() => handleOpenEditItem(it)}
+                            className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                            title="Editar Item"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(it.id, it.name)}
+                            className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                            title="Excluir Item"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                {items.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-zinc-400 dark:text-zinc-500">
+                      <ListChecks className="w-8 h-8 mx-auto mb-2 opacity-40 text-zinc-400" />
+                      <p className="font-semibold text-sm text-zinc-700 dark:text-zinc-300">
+                        Nenhum item cadastrado
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Clique em "+ Novo Item" para cadastrar itens e padronizar seus relatórios.
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : activeTab === "payment_methods" ? (
-        /* Aba 2: Tabela de Formas de Pagamento */
+        /* Aba 3: Tabela de Formas de Pagamento */
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -1678,6 +2030,187 @@ export const Settings: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsEditPmModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Novo Item de Despesa */}
+      <Modal
+        isOpen={isItemModalOpen}
+        onClose={() => setIsItemModalOpen(false)}
+        title="Cadastrar Novo Item de Despesa"
+        maxWidth="md"
+      >
+        <form onSubmit={handleCreateItem} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Nome do Item Padronizado *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Supermercado Mensal, Conta de Luz, Combustível"
+              value={newItemName}
+              onChange={(e) => setNewItemName(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Categoria Vinculada *
+            </label>
+            <select
+              value={newItemCategoryId}
+              onChange={(e) => setNewItemCategoryId(e.target.value)}
+              required
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Natureza / Grau de Essencialidade *
+            </label>
+            <select
+              value={newItemNature}
+              onChange={(e) => setNewItemNature(e.target.value as EssentialityType)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="OBRIGATORIO">Obrigatório — Sobrevivência, moradia, contas básicas</option>
+              <option value="NECESSARIO">Necessário — Alimentação, transporte, trabalho</option>
+              <option value="DESEJO">Desejo — Lazer, restaurantes, viagens, supérfluos</option>
+              <option value="NENHUM">Geral — Sem classificação específica</option>
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-2 pt-1">
+            <input
+              type="checkbox"
+              id="newItemIsActive"
+              checked={newItemIsActive}
+              onChange={(e) => setNewItemIsActive(e.target.checked)}
+              className="rounded border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500 w-4 h-4"
+            />
+            <label
+              htmlFor="newItemIsActive"
+              className="text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer"
+            >
+              Item ativo para novos lançamentos de despesas
+            </label>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsItemModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? "Salvando..." : "Cadastrar Item"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Editar Item de Despesa */}
+      <Modal
+        isOpen={isEditItemModalOpen}
+        onClose={() => setIsEditItemModalOpen(false)}
+        title={`Editar Item: ${editingItem?.name || ""}`}
+        maxWidth="md"
+      >
+        <form onSubmit={handleUpdateItem} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Nome do Item Padronizado *
+            </label>
+            <input
+              type="text"
+              required
+              value={editItemName}
+              onChange={(e) => setEditItemName(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Categoria Vinculada *
+            </label>
+            <select
+              value={editItemCategoryId}
+              onChange={(e) => setEditItemCategoryId(e.target.value)}
+              required
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Natureza / Grau de Essencialidade *
+            </label>
+            <select
+              value={editItemNature}
+              onChange={(e) => setEditItemNature(e.target.value as EssentialityType)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="OBRIGATORIO">Obrigatório — Sobrevivência, moradia, contas básicas</option>
+              <option value="NECESSARIO">Necessário — Alimentação, transporte, trabalho</option>
+              <option value="DESEJO">Desejo — Lazer, restaurantes, viagens, supérfluos</option>
+              <option value="NENHUM">Geral — Sem classificação específica</option>
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-2 pt-1">
+            <input
+              type="checkbox"
+              id="editItemIsActive"
+              checked={editItemIsActive}
+              onChange={(e) => setEditItemIsActive(e.target.checked)}
+              className="rounded border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500 w-4 h-4"
+            />
+            <label
+              htmlFor="editItemIsActive"
+              className="text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer"
+            >
+              Item ativo para novos lançamentos de despesas
+            </label>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsEditItemModalOpen(false)}
               className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
             >
               Cancelar

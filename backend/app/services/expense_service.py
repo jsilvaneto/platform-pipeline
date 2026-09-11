@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.expense import Expense
 from app.models.payment import Payment
 from app.models.category import Category
+from app.models.item import Item
 from app.models.payment_method import PaymentMethod
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseFilter
 
@@ -24,10 +25,30 @@ def _add_months(source_date: date, months: int) -> date:
 
 async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) -> Expense:
     """Cria uma despesa e gera atomicamente suas parcelas/liquidações em centavos."""
+    target_category_id = data.category_id
+    target_essentiality = data.essentiality
+
+    # Valida item se informado e herda categoria e natureza se apropriado
+    if data.item_id:
+        item_res = await db.execute(
+            select(Item).where(Item.id == data.item_id, Item.user_id == user_id)
+        )
+        item = item_res.scalar_one_or_none()
+        if not item:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Item informado é inválido ou não pertence ao usuário."
+            )
+        if not target_category_id:
+            target_category_id = item.category_id
+        # Se a essencialidade não foi alterada explicitamente pelo usuário, herda do item
+        if data.essentiality == "NECESSARIO" and item.nature:
+            target_essentiality = item.nature
+
     # Valida categoria se informada
-    if data.category_id:
+    if target_category_id:
         cat = await db.execute(
-            select(Category).where(Category.id == data.category_id, Category.user_id == user_id)
+            select(Category).where(Category.id == target_category_id, Category.user_id == user_id)
         )
         if not cat.scalar_one_or_none():
             raise HTTPException(
@@ -51,13 +72,14 @@ async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) ->
 
     expense = Expense(
         user_id=user_id,
-        category_id=data.category_id,
+        category_id=target_category_id,
+        item_id=data.item_id,
         payment_method_id=data.payment_method_id,
         description=data.description.strip(),
         total_amount_cents=data.total_amount_cents,
         issue_date=data.issue_date,
         due_date=data.due_date,
-        essentiality=data.essentiality,
+        essentiality=target_essentiality,
         status=data.status,
         installments_count=data.installments_count,
         is_recurring=data.is_recurring,
@@ -95,7 +117,7 @@ async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) ->
 
     await db.commit()
     await db.refresh(expense)
-    return expense
+    return await get_expense(db, user_id, expense.id)
 
 async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expense:
     """Busca uma despesa com seus pagamentos e relacionamentos garantindo isolamento por usuário."""
@@ -103,6 +125,7 @@ async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expens
         select(Expense)
         .options(
             selectinload(Expense.category),
+            selectinload(Expense.item).selectinload(Item.category),
             selectinload(Expense.payment_method),
             selectinload(Expense.payments),
         )
@@ -120,11 +143,12 @@ async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expens
 async def list_expenses(
     db: AsyncSession, user_id: str, filter_params: ExpenseFilter
 ) -> Sequence[Expense]:
-    """Lista despesas do usuário com filtros opcionais por mês, status, categoria ou essencialidade."""
+    """Lista despesas do usuário com filtros opcionais por mês, status, categoria, item ou essencialidade."""
     query = (
         select(Expense)
         .options(
             selectinload(Expense.category),
+            selectinload(Expense.item).selectinload(Item.category),
             selectinload(Expense.payment_method),
             selectinload(Expense.payments),
         )
@@ -143,6 +167,9 @@ async def list_expenses(
     if filter_params.category_id:
         query = query.where(Expense.category_id == filter_params.category_id)
 
+    if filter_params.item_id:
+        query = query.where(Expense.item_id == filter_params.item_id)
+
     if filter_params.payment_method_id:
         query = query.where(Expense.payment_method_id == filter_params.payment_method_id)
 
@@ -156,8 +183,25 @@ async def list_expenses(
 async def update_expense(
     db: AsyncSession, user_id: str, expense_id: str, data: ExpenseUpdate
 ) -> Expense:
-    """Atualiza metadados da despesa (descrição, categoria, notas, essencialidade)."""
+    """Atualiza metadados da despesa (descrição, categoria, item, notas, essencialidade)."""
     expense = await get_expense(db, user_id, expense_id)
+
+    if data.item_id is not None:
+        if data.item_id != "":
+            item_res = await db.execute(
+                select(Item).where(Item.id == data.item_id, Item.user_id == user_id)
+            )
+            item = item_res.scalar_one_or_none()
+            if not item:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Item informado é inválido."
+                )
+            expense.item_id = data.item_id
+            if not expense.category_id:
+                expense.category_id = item.category_id
+        else:
+            expense.item_id = None
 
     if data.category_id is not None:
         if data.category_id != "":
@@ -203,7 +247,7 @@ async def update_expense(
 
     await db.commit()
     await db.refresh(expense)
-    return expense
+    return await get_expense(db, user_id, expense.id)
 
 async def delete_expense(db: AsyncSession, user_id: str, expense_id: str) -> None:
     """Exclui a despesa e suas parcelas em cascata."""

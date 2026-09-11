@@ -5,8 +5,9 @@ from pydantic import ValidationError
 from app.services.expense_service import _add_months
 from app.schemas.expense import ExpenseCreate
 from app.schemas.category import CategoryCreate
+from app.schemas.item import ItemCreate
 from app.schemas.payment_method import PaymentMethodCreate
-from app.schemas.dashboard import DashboardMetrics, MonthlySpending
+from app.schemas.dashboard import DashboardMetrics, MonthlySpending, ItemSpending
 from app.schemas.system import (
     SystemDiagnosticsResponse,
     DatabaseDiagnostics,
@@ -123,6 +124,59 @@ class TestFinancialDomainLogic(unittest.TestCase):
 
         with self.assertRaises(ValidationError):
             PaymentMethodCreate(name="Cartão Fake", type="TIPO_INEXISTENTE")
+
+    def test_item_schema_validation(self):
+        """Valida integridade e restrições do schema de Item."""
+        item = ItemCreate(
+            name="Supermercado",
+            category_id="cat-123",
+            nature="NECESSARIO",
+            is_active=True,
+        )
+        self.assertEqual(item.name, "Supermercado")
+        self.assertEqual(item.nature, "NECESSARIO")
+        self.assertTrue(item.is_active)
+
+        # Naturezas válidas
+        for nat in ["OBRIGATORIO", "NECESSARIO", "DESEJO", "NENHUM"]:
+            it = ItemCreate(name="Item Teste", category_id="cat-1", nature=nat)
+            self.assertEqual(it.nature, nat)
+
+        # Natureza inválida deve falhar
+        with self.assertRaises(ValidationError):
+            ItemCreate(name="Item Fake", category_id="cat-1", nature="INVALIDO")
+
+        # Nome vazio deve falhar
+        with self.assertRaises(ValidationError):
+            ItemCreate(name="", category_id="cat-1")
+
+    def test_expense_schema_with_item_id(self):
+        """Valida criação de despesa associada a um item_id opcional."""
+        exp = ExpenseCreate(
+            description="Compras da Semana",
+            total_amount_cents=35000,
+            issue_date="2026-09-08",
+            due_date="2026-09-10",
+            category_id="cat-123",
+            item_id="item-456",
+            essentiality="NECESSARIO",
+        )
+        self.assertEqual(exp.item_id, "item-456")
+        self.assertEqual(exp.category_id, "cat-123")
+
+    def test_item_spending_schema(self):
+        """Valida schema analítico de ItemSpending para o dashboard."""
+        item_spending = ItemSpending(
+            item_id="item-1",
+            item_name="Supermercado",
+            category_name="Alimentação",
+            nature="NECESSARIO",
+            total_cents=120000,
+            percentage=24.5,
+        )
+        self.assertEqual(item_spending.item_name, "Supermercado")
+        self.assertEqual(item_spending.total_cents, 120000)
+        self.assertEqual(item_spending.percentage, 24.5)
 
     def test_monthly_spending_schema(self):
         """Valida schema de detalhamento mensal."""

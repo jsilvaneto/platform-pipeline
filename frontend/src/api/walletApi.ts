@@ -3,6 +3,9 @@ import {
   Category,
   CategoryCreateInput,
   CategoryUpdateInput,
+  Item,
+  ItemCreateInput,
+  ItemUpdateInput,
   PaymentMethod,
   PaymentMethodCreateInput,
   PaymentMethodUpdateInput,
@@ -41,6 +44,31 @@ export const walletApi = {
 
   async deleteCategory(id: string): Promise<void> {
     await api.delete(`/categories/${id}`);
+  },
+
+  // Itens de Despesa
+  async getItems(params?: { category_id?: string; active_only?: boolean }): Promise<Item[]> {
+    const { data } = await api.get<Item[]>("/items/", { params });
+    return data;
+  },
+
+  async getItem(id: string): Promise<Item> {
+    const { data } = await api.get<Item>(`/items/${id}`);
+    return data;
+  },
+
+  async createItem(input: ItemCreateInput): Promise<Item> {
+    const { data } = await api.post<Item>("/items/", input);
+    return data;
+  },
+
+  async updateItem(id: string, input: ItemUpdateInput): Promise<Item> {
+    const { data } = await api.put<Item>(`/items/${id}`, input);
+    return data;
+  },
+
+  async deleteItem(id: string): Promise<void> {
+    await api.delete(`/items/${id}`);
   },
 
   // Formas de Pagamento

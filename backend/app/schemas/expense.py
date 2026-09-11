@@ -1,6 +1,7 @@
 from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict
 from app.schemas.category import CategoryResponse
+from app.schemas.item import ItemResponse
 from app.schemas.payment_method import PaymentMethodResponse
 from app.schemas.payment import PaymentResponse
 
@@ -13,6 +14,7 @@ class ExpenseBase(BaseModel):
     issue_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data da realização da despesa (YYYY-MM-DD)")
     due_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data de vencimento principal (YYYY-MM-DD)")
     category_id: str | None = Field(default=None, description="ID da categoria")
+    item_id: str | None = Field(default=None, description="ID do item padronizado")
     payment_method_id: str | None = Field(default=None, description="ID da forma de pagamento")
     essentiality: EssentialityType = Field(default="NECESSARIO", description="Grau de essencialidade")
     status: ExpenseStatus = Field(default="PENDENTE", description="Status da despesa")
@@ -26,6 +28,7 @@ class ExpenseCreate(ExpenseBase):
 class ExpenseUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=1, max_length=200)
     category_id: str | None = None
+    item_id: str | None = None
     payment_method_id: str | None = None
     essentiality: EssentialityType | None = None
     status: ExpenseStatus | None = None
@@ -38,6 +41,7 @@ class ExpenseResponse(ExpenseBase):
     created_at: str
     updated_at: str
     category: CategoryResponse | None = None
+    item: ItemResponse | None = None
     payment_method: PaymentMethodResponse | None = None
     payments: list[PaymentResponse] = []
 
@@ -47,5 +51,6 @@ class ExpenseFilter(BaseModel):
     month: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$", description="Mês de competência/vencimento (YYYY-MM)")
     status: ExpenseStatus | None = None
     category_id: str | None = None
+    item_id: str | None = None
     payment_method_id: str | None = None
     essentiality: EssentialityType | None = None
