@@ -137,6 +137,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [paymentAmountStr, setPaymentAmountStr] = useState<string>("");
   const [paymentFormError, setPaymentFormError] = useState<string | null>(null);
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState<boolean>(false);
+  const [showEditInstallmentsList, setShowEditInstallmentsList] = useState<boolean>(false);
 
   // Sincroniza abertura de modal disparada de fora (ex: atalhos do Dashboard)
   useEffect(() => {
@@ -293,6 +294,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
     setEditIsRecurring(expense.is_recurring);
     setEditNotes(expense.notes || "");
     setEditFormError(null);
+    setShowEditInstallmentsList(false);
     setIsEditModalOpen(true);
   };
 
@@ -1354,87 +1356,88 @@ export const Expenses: React.FC<ExpensesProps> = ({
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title="Editar Lançamento"
-        maxWidth="lg"
+        maxWidth="xl"
       >
-        <form onSubmit={handleUpdateExpense} className="space-y-4">
+        <form onSubmit={handleUpdateExpense} className="space-y-3.5">
           {editFormError && (
             <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-700 dark:text-rose-300">
               {editFormError}
             </div>
           )}
 
-          {/* Item Padronizado (Obrigatório) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Item Padronizado *
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuickItemCategoryId(editCategoryId || (categories[0]?.id ?? ""));
-                  setQuickItemNature(editEssentiality);
-                  setIsQuickItemModalOpen(true);
-                }}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
+          {/* Item Padronizado e Contato (lado a lado) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Item Padronizado *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickItemCategoryId(editCategoryId || (categories[0]?.id ?? ""));
+                    setQuickItemNature(editEssentiality);
+                    setIsQuickItemModalOpen(true);
+                  }}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Novo Item</span>
+                </button>
+              </div>
+              <select
+                required
+                value={editItemId}
+                onChange={(e) => handleSelectEditItem(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium truncate"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Novo Item</span>
-              </button>
+                {items.length === 0 ? (
+                  <option value="">Nenhum item disponível</option>
+                ) : (
+                  items
+                    .filter((it) => it.is_active || it.id === editItemId)
+                    .map((it) => (
+                      <option key={it.id} value={it.id}>
+                        {it.name} ({it.category?.name || "Sem categoria"})
+                      </option>
+                    ))
+                )}
+              </select>
             </div>
-            <select
-              required
-              value={editItemId}
-              onChange={(e) => handleSelectEditItem(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-            >
-              {items.length === 0 ? (
-                <option value="">Nenhum item disponível</option>
-              ) : (
-                items
-                  .filter((it) => it.is_active || it.id === editItemId)
-                  .map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.name} ({it.category?.name || "Sem categoria"} &bull; {ESSENTIALITY_LABELS[it.nature]?.label || it.nature})
-                    </option>
-                  ))
-              )}
-            </select>
-          </div>
 
-          {/* Contato (Obrigatório) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Contato *
-              </label>
-              <button
-                type="button"
-                onClick={() => setIsQuickContactModalOpen(true)}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Contato *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickContactModalOpen(true)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Novo Contato</span>
+                </button>
+              </div>
+              <select
+                required
+                value={editContactId}
+                onChange={(e) => setEditContactId(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium truncate"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Novo Contato</span>
-              </button>
+                {contacts.length === 0 ? (
+                  <option value="">Nenhum contato disponível</option>
+                ) : (
+                  contacts
+                    .filter((ct) => ct.is_active || ct.id === editContactId)
+                    .map((ct) => (
+                      <option key={ct.id} value={ct.id}>
+                        {ct.name} {ct.phone ? `(${ct.phone})` : ""}
+                      </option>
+                    ))
+                )}
+              </select>
             </div>
-            <select
-              required
-              value={editContactId}
-              onChange={(e) => setEditContactId(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-            >
-              {contacts.length === 0 ? (
-                <option value="">Nenhum contato disponível</option>
-              ) : (
-                contacts
-                  .filter((ct) => ct.is_active || ct.id === editContactId)
-                  .map((ct) => (
-                    <option key={ct.id} value={ct.id}>
-                      {ct.name} {ct.phone ? `(${ct.phone})` : ""}
-                    </option>
-                  ))
-              )}
-            </select>
           </div>
 
           {/* Descrição */}
@@ -1480,7 +1483,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
               />
               {hasPaidInstallments && (
                 <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 block">
-                  Para alterar valores com parcelas pagas, edite a parcela desejada na seção abaixo.
+                  Para alterar valores com parcelas pagas, expanda as parcelas ao lado.
                 </span>
               )}
             </div>
@@ -1490,29 +1493,42 @@ export const Expenses: React.FC<ExpensesProps> = ({
                 Estrutura de Parcelamento
               </label>
               <div className="bg-zinc-100/70 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2 text-sm">
-                <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                  {editingExpense && editingExpense.installments_count > 1
-                    ? `${editingExpense.installments_count} parcelas (${editingExpense.payments.filter((p) => p.status === "CONCLUIDO").length} pagas)`
-                    : "À vista (1 parcela)"}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-xs">
+                    {editingExpense && editingExpense.installments_count > 1
+                      ? `${editingExpense.installments_count} parcelas (${editingExpense.payments.filter((p) => p.status === "CONCLUIDO").length} pagas)`
+                      : "À vista (1 parcela)"}
+                  </span>
+                  {editingExpense && editingExpense.installments_count > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEditInstallmentsList((prev) => !prev)}
+                      className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-1 ml-2 shrink-0"
+                      title={showEditInstallmentsList ? "Ocultar lista de parcelas" : "Ver / editar cada parcela individualmente"}
+                    >
+                      <span>{showEditInstallmentsList ? "Ocultar" : "Ver parcelas"}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showEditInstallmentsList ? "rotate-180" : ""}`} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Seção de Edição Individual de Parcelas (Quando parcelado) */}
-          {editingExpense && editingExpense.installments_count > 1 && (
-            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 bg-zinc-50/70 dark:bg-zinc-950/40 space-y-2">
+          {/* Seção de Edição Individual de Parcelas (Opcional quando expandido) */}
+          {editingExpense && editingExpense.installments_count > 1 && showEditInstallmentsList && (
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 bg-zinc-50/80 dark:bg-zinc-950/50 space-y-2 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                    Parcelas deste Registro
+                    Parcelas deste Registro ({editingExpense.installments_count})
                   </h4>
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Edite o valor de uma parcela individual. As outras parcelas permanecerão inalteradas.
+                    Edite o valor de qualquer parcela individualmente sem alterar as outras.
                   </p>
                 </div>
               </div>
-              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
                 {editingExpense.payments.map((p) => (
                   <div
                     key={p.id}

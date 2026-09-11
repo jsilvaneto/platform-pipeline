@@ -24,8 +24,16 @@ export const Modal: React.FC<ModalProps> = ({
         onClose();
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        document.body.style.overflow = originalOverflow;
+      };
+    }
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -39,14 +47,22 @@ export const Modal: React.FC<ModalProps> = ({
   }[maxWidth];
 
   return (
-    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-sm animate-fade-in`}>
+    <div
+      className={`fixed inset-0 ${zIndex} flex items-center justify-center p-3 sm:p-4 bg-zinc-950/60 backdrop-blur-sm animate-fade-in`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div
-        className={`w-full ${maxWidthClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden`}
+        className={`w-full ${maxWidthClass} max-h-[90vh] flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden`}
         role="dialog"
         aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+        {/* Header (fixo no topo) */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             {title}
           </h3>
@@ -59,8 +75,10 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6">{children}</div>
+        {/* Body (com scroll interno garantido) */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 overscroll-contain">
+          {children}
+        </div>
       </div>
     </div>
   );
