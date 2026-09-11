@@ -24,37 +24,31 @@ def _add_months(source_date: date, months: int) -> date:
     return date(year, month, day)
 
 async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) -> Expense:
-    """Cria uma despesa e gera atomicamente suas parcelas/liquidações em centavos."""
-    target_category_id = data.category_id
-    target_essentiality = data.essentiality
-
-    # Valida item se informado e herda categoria e natureza se apropriado
-    if data.item_id:
-        item_res = await db.execute(
-            select(Item).where(Item.id == data.item_id, Item.user_id == user_id)
+    """Cria uma despesa associada a um item obrigatório, herdando categoria e natureza diretamente do item."""
+    # Valida item obrigatório e herda categoria e natureza intrínseca
+    item_res = await db.execute(
+        select(Item).where(Item.id == data.item_id, Item.user_id == user_id)
+    )
+    item = item_res.scalar_one_or_none()
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Item informado é inválido ou não pertence ao usuário."
         )
-        item = item_res.scalar_one_or_none()
-        if not item:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Item informado é inválido ou não pertence ao usuário."
-            )
-        if not target_category_id:
-            target_category_id = item.category_id
-        # Se a essencialidade não foi alterada explicitamente pelo usuário, herda do item
-        if data.essentiality == "NECESSARIO" and item.nature:
-            target_essentiality = item.nature
 
-    # Valida categoria se informada
-    if target_category_id:
-        cat = await db.execute(
-            select(Category).where(Category.id == target_category_id, Category.user_id == user_id)
+    # Categoria e Natureza são estritamente vinculadas e herdadas do item
+    target_category_id = item.category_id
+    target_essentiality = item.nature
+
+    # Valida categoria vinculada ao item
+    cat = await db.execute(
+        select(Category).where(Category.id == target_category_id, Category.user_id == user_id)
+    )
+    if not cat.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Categoria vinculada ao item é inválida ou não pertence ao usuário."
         )
-        if not cat.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Categoria informada é inválida ou não pertence ao usuário."
-            )
 
     # Valida meio de pagamento se informado
     if data.payment_method_id:
@@ -187,7 +181,7 @@ async def update_expense(
     expense = await get_expense(db, user_id, expense_id)
 
     if data.item_id is not None:
-        if data.item_id != "":
+        if data.item_id.strip() != "":
             item_res = await db.execute(
                 select(Item).where(Item.id == data.item_id, Item.user_id == user_id)
             )
@@ -195,13 +189,16 @@ async def update_expense(
             if not item:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Item informado é inválido."
+                    detail="Item informado é inválido ou não pertence ao usuário."
                 )
-            expense.item_id = data.item_id
-            if not expense.category_id:
-                expense.category_id = item.category_id
+            expense.item_id = item.id
+            expense.category_id = item.category_id
+            expense.essentiality = item.nature
         else:
-            expense.item_id = None
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O campo item é obrigatório no lançamento."
+            )
 
     if data.category_id is not None:
         if data.category_id != "":

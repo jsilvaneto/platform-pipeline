@@ -126,7 +126,14 @@ export const Expenses: React.FC<ExpensesProps> = ({
       setItems(itmData);
       setPaymentMethods(pmData);
 
-      if (catData.length > 0 && !formCategoryId) {
+      if (itmData.length > 0 && !formItemId) {
+        const firstActive = itmData.find((it) => it.is_active) || itmData[0];
+        if (firstActive) {
+          setFormItemId(firstActive.id);
+          setFormCategoryId(firstActive.category_id);
+          setFormEssentiality(firstActive.nature);
+        }
+      } else if (catData.length > 0 && !formCategoryId) {
         setFormCategoryId(catData[0].id);
       }
       if (pmData.length > 0 && !formPaymentMethodId) {
@@ -244,6 +251,11 @@ export const Expenses: React.FC<ExpensesProps> = ({
     e.preventDefault();
     setFormError(null);
 
+    if (!formItemId) {
+      setFormError("Selecione um item padronizado para a despesa.");
+      return;
+    }
+
     const amountCents = parseAmountToCents(formAmountStr);
     if (amountCents <= 0) {
       setFormError("Informe um valor monetário válido maior que zero.");
@@ -261,8 +273,8 @@ export const Expenses: React.FC<ExpensesProps> = ({
         total_amount_cents: amountCents,
         issue_date: formIssueDate,
         due_date: formDueDate,
+        item_id: formItemId,
         category_id: formCategoryId || null,
-        item_id: formItemId || null,
         payment_method_id: formPaymentMethodId || null,
         essentiality: formEssentiality,
         status: "PENDENTE",
@@ -276,8 +288,15 @@ export const Expenses: React.FC<ExpensesProps> = ({
       if (onCloseCreateModalExternal) {
         onCloseCreateModalExternal();
       }
-      // Limpa formulário
-      setFormItemId("");
+      // Limpa formulário preservando item inicial padrão se disponível
+      const defaultItem = items.find((it) => it.is_active) || items[0];
+      if (defaultItem) {
+        setFormItemId(defaultItem.id);
+        setFormCategoryId(defaultItem.category_id);
+        setFormEssentiality(defaultItem.nature);
+      } else {
+        setFormItemId("");
+      }
       setFormDescription("");
       setFormAmountStr("");
       setFormInstallments(1);
@@ -306,6 +325,11 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [yearNum, monthNum] = selectedMonth.split("-").map(Number);
   const monthDate = new Date(yearNum, monthNum - 1, 1);
   const monthFormatted = monthDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  const currentSelectedItem = items.find((it) => it.id === formItemId);
+  const currentSelectedCategory = categories.find(
+    (c) => c.id === (currentSelectedItem?.category_id || formCategoryId)
+  );
 
   return (
     <div className="space-y-6">
@@ -714,11 +738,11 @@ export const Expenses: React.FC<ExpensesProps> = ({
             </div>
           )}
 
-          {/* Item Padronizado */}
+          {/* Item Padronizado (Obrigatório) */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Item Padronizado (Opcional)
+                Item Padronizado *
               </label>
               <button
                 type="button"
@@ -727,25 +751,29 @@ export const Expenses: React.FC<ExpensesProps> = ({
                   setQuickItemNature(formEssentiality);
                   setIsQuickItemModalOpen(true);
                 }}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Novo Item</span>
               </button>
             </div>
             <select
+              required
               value={formItemId}
               onChange={(e) => handleSelectItem(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
             >
-              <option value="">Nenhum item selecionado (Livre)</option>
-              {items
-                .filter((it) => it.is_active || it.id === formItemId)
-                .map((it) => (
-                  <option key={it.id} value={it.id}>
-                    {it.name} ({it.category?.name || "Sem categoria"} - {ESSENTIALITY_LABELS[it.nature]?.label || it.nature})
-                  </option>
-                ))}
+              {items.length === 0 ? (
+                <option value="">Nenhum item disponível (cadastre um novo item)</option>
+              ) : (
+                items
+                  .filter((it) => it.is_active || it.id === formItemId)
+                  .map((it) => (
+                    <option key={it.id} value={it.id}>
+                      {it.name} ({it.category?.name || "Sem categoria"} &bull; {ESSENTIALITY_LABELS[it.nature]?.label || it.nature})
+                    </option>
+                  ))
+              )}
             </select>
           </div>
 
@@ -832,25 +860,58 @@ export const Expenses: React.FC<ExpensesProps> = ({
             </div>
           </div>
 
-          {/* Categoria e Forma de Pagamento */}
+          {/* Categoria Vinculada e Natureza da Despesa (Automáticas do Item) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Categoria de Despesa
+                Categoria Vinculada
               </label>
-              <select
-                value={formCategoryId}
-                onChange={(e) => setFormCategoryId(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center space-x-2.5 bg-zinc-100/70 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2 text-sm">
+                <span
+                  className="w-3 h-3 rounded-full shrink-0 shadow-2xs"
+                  style={{
+                    backgroundColor:
+                      currentSelectedCategory?.color ||
+                      currentSelectedItem?.category?.color ||
+                      "#6366f1",
+                  }}
+                />
+                <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                  {currentSelectedCategory?.name ||
+                    currentSelectedItem?.category?.name ||
+                    "Automática pelo item"}
+                </span>
+              </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Natureza da Despesa
+              </label>
+              <div className="flex items-center justify-between bg-zinc-100/70 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2">
+                {currentSelectedItem ? (
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                      ESSENTIALITY_LABELS[currentSelectedItem.nature]?.color || ""
+                    }`}
+                  >
+                    {ESSENTIALITY_LABELS[currentSelectedItem.nature]?.label ||
+                      currentSelectedItem.nature}
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                    Definida pelo item
+                  </span>
+                )}
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                  (automático do item)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Forma de Pagamento e Recorrência */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                 Forma de Pagamento
@@ -865,25 +926,6 @@ export const Expenses: React.FC<ExpensesProps> = ({
                     {pm.name}
                   </option>
                 ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Essencialidade e Recorrência */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Grau de Essencialidade
-              </label>
-              <select
-                value={formEssentiality}
-                onChange={(e) => setFormEssentiality(e.target.value as EssentialityType)}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="OBRIGATORIO">Obrigatório (Sobrevivência, Aluguel, Luz)</option>
-                <option value="NECESSARIO">Necessário (Alimentação, Transporte)</option>
-                <option value="DESEJO">Desejo (Lazer, Restaurantes, Viagens)</option>
-                <option value="NENHUM">Geral / Sem Classificação</option>
               </select>
             </div>
 

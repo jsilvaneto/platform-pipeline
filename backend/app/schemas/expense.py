@@ -14,16 +14,15 @@ class ExpenseBase(BaseModel):
     issue_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data da realização da despesa (YYYY-MM-DD)")
     due_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data de vencimento principal (YYYY-MM-DD)")
     category_id: str | None = Field(default=None, description="ID da categoria")
-    item_id: str | None = Field(default=None, description="ID do item padronizado")
     payment_method_id: str | None = Field(default=None, description="ID da forma de pagamento")
-    essentiality: EssentialityType = Field(default="NECESSARIO", description="Grau de essencialidade")
     status: ExpenseStatus = Field(default="PENDENTE", description="Status da despesa")
     installments_count: int = Field(default=1, ge=1, le=120, description="Número total de parcelas")
     is_recurring: bool = Field(default=False, description="Indica se é despesa fixa recorrente")
     notes: str | None = Field(default=None, description="Observações complementares")
 
 class ExpenseCreate(ExpenseBase):
-    pass
+    item_id: str = Field(..., min_length=1, description="ID do item padronizado obrigatório")
+    essentiality: EssentialityType | None = Field(default=None, description="Grau de essencialidade (herdado diretamente do item)")
 
 class ExpenseUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=1, max_length=200)
@@ -38,6 +37,8 @@ class ExpenseUpdate(BaseModel):
 class ExpenseResponse(ExpenseBase):
     id: str
     user_id: str
+    item_id: str | None = None
+    essentiality: EssentialityType = "NECESSARIO"
     created_at: str
     updated_at: str
     category: CategoryResponse | None = None

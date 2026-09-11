@@ -69,6 +69,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 total_amount_cents=0,  # Proibido: deve ser > 0
                 issue_date="2026-09-07",
                 due_date="2026-09-07",
+                item_id="item-test-123",
             )
 
         with self.assertRaises(ValidationError):
@@ -77,6 +78,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 total_amount_cents=-1500,
                 issue_date="2026-09-07",
                 due_date="2026-09-07",
+                item_id="item-test-123",
             )
 
     def test_expense_schema_date_format_validation(self):
@@ -87,6 +89,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 total_amount_cents=5000,
                 issue_date="07/09/2026",  # Formato inválido
                 due_date="2026-09-07",
+                item_id="item-test-123",
             )
 
     def test_expense_schema_essentiality_validation(self):
@@ -96,6 +99,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
             total_amount_cents=25000,
             issue_date="2026-09-07",
             due_date="2026-09-10",
+            item_id="item-test-123",
             essentiality="OBRIGATORIO",
         )
         self.assertEqual(exp.essentiality, "OBRIGATORIO")
@@ -106,7 +110,27 @@ class TestFinancialDomainLogic(unittest.TestCase):
                 total_amount_cents=25000,
                 issue_date="2026-09-07",
                 due_date="2026-09-10",
+                item_id="item-test-123",
                 essentiality="INVALIDO",
+            )
+
+    def test_expense_schema_requires_item_id(self):
+        """Garante que o campo item_id é estritamente obrigatório no cadastro de lançamento."""
+        with self.assertRaises(ValidationError):
+            ExpenseCreate(
+                description="Despesa Sem Item",
+                total_amount_cents=10000,
+                issue_date="2026-09-07",
+                due_date="2026-09-07",
+            )
+
+        with self.assertRaises(ValidationError):
+            ExpenseCreate(
+                description="Despesa Com Item Vazio",
+                total_amount_cents=10000,
+                issue_date="2026-09-07",
+                due_date="2026-09-07",
+                item_id="",
             )
 
     def test_category_schema_validation(self):
@@ -151,7 +175,7 @@ class TestFinancialDomainLogic(unittest.TestCase):
             ItemCreate(name="", category_id="cat-1")
 
     def test_expense_schema_with_item_id(self):
-        """Valida criação de despesa associada a um item_id opcional."""
+        """Valida criação de despesa associada a um item_id obrigatório."""
         exp = ExpenseCreate(
             description="Compras da Semana",
             total_amount_cents=35000,

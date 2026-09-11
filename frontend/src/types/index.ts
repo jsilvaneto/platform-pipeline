@@ -149,8 +149,8 @@ export interface ExpenseCreateInput {
   total_amount_cents: number;
   issue_date: string;
   due_date: string;
+  item_id: string;
   category_id?: string | null;
-  item_id?: string | null;
   payment_method_id?: string | null;
   essentiality?: EssentialityType;
   status?: ExpenseStatus;
