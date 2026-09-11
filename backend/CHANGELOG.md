@@ -13,6 +13,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Item Obrigatório & Natureza 100% Automática**: O campo de item padronizado agora é mandatório no lançamento de despesas, eliminando a necessidade de seleção manual redundante de natureza/essencialidade.
 - **Vínculo Direto de Categoria e Essencialidade**: Ao selecionar o item, a categoria e a natureza são herdadas automaticamente tanto no backend quanto na interface.
 - **Interface Otimizada com Badges Informativos**: Substituição do seletor manual de grau de essencialidade por badge visual indicando a natureza intrínseca do item selecionado.
+- **Parcelamento Flexível e Digitável**: Substituição do menu suspenso de parcelas fixas por campo numérico digitável livre (1 a 120 parcelas), acompanhado de botão de atalho rápido "À vista" e cálculo em tempo real do valor estimado por parcela.
 
 ---
 

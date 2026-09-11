@@ -86,7 +86,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [formCategoryId, setFormCategoryId] = useState<string>("");
   const [formPaymentMethodId, setFormPaymentMethodId] = useState<string>("");
   const [formEssentiality, setFormEssentiality] = useState<EssentialityType>("NECESSARIO");
-  const [formInstallments, setFormInstallments] = useState<number>(1);
+  const [formInstallmentsStr, setFormInstallmentsStr] = useState<string>("1");
   const [formIsRecurring, setFormIsRecurring] = useState<boolean>(false);
   const [formNotes, setFormNotes] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -266,6 +266,12 @@ export const Expenses: React.FC<ExpensesProps> = ({
       return;
     }
 
+    const parsedInstallments = parseInt(formInstallmentsStr, 10);
+    if (isNaN(parsedInstallments) || parsedInstallments < 1 || parsedInstallments > 120) {
+      setFormError("Informe uma quantidade de parcelas válida entre 1 e 120.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const payload: ExpenseCreateInput = {
@@ -278,7 +284,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
         payment_method_id: formPaymentMethodId || null,
         essentiality: formEssentiality,
         status: "PENDENTE",
-        installments_count: formInstallments,
+        installments_count: parsedInstallments,
         is_recurring: formIsRecurring,
         notes: formNotes.trim() || null,
       };
@@ -299,7 +305,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
       }
       setFormDescription("");
       setFormAmountStr("");
-      setFormInstallments(1);
+      setFormInstallmentsStr("1");
       setFormIsRecurring(false);
       setFormNotes("");
       loadData();
@@ -330,6 +336,8 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const currentSelectedCategory = categories.find(
     (c) => c.id === (currentSelectedItem?.category_id || formCategoryId)
   );
+  const currentAmountCents = parseAmountToCents(formAmountStr);
+  const currentInstallmentsCount = parseInt(formInstallmentsStr, 10) || 1;
 
   return (
     <div className="space-y-6">
@@ -809,21 +817,56 @@ export const Expenses: React.FC<ExpensesProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Parcelamento
-              </label>
-              <select
-                value={formInstallments}
-                onChange={(e) => setFormInstallments(Number(e.target.value))}
-                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value={1}>À vista (1x)</option>
-                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24].map((n) => (
-                  <option key={n} value={n}>
-                    Parcelado em {n}x
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Quantidade de Parcelas *
+                </label>
+                {currentInstallmentsCount > 1 && currentAmountCents > 0 ? (
+                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                    {currentInstallmentsCount}x de {formatCurrency(Math.round(currentAmountCents / currentInstallmentsCount))}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                    À vista (1x)
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    required
+                    value={formInstallmentsStr}
+                    onChange={(e) => setFormInstallmentsStr(e.target.value)}
+                    onBlur={() => {
+                      const val = parseInt(formInstallmentsStr, 10);
+                      if (isNaN(val) || val < 1) {
+                        setFormInstallmentsStr("1");
+                      } else if (val > 120) {
+                        setFormInstallmentsStr("120");
+                      } else {
+                        setFormInstallmentsStr(String(val));
+                      }
+                    }}
+                    placeholder="1"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormInstallmentsStr("1")}
+                  className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                    currentInstallmentsCount === 1
+                      ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                      : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                  }`}
+                  title="Definir pagamento à vista em 1 parcela"
+                >
+                  À vista
+                </button>
+              </div>
             </div>
           </div>
 
