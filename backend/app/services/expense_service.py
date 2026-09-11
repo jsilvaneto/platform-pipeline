@@ -267,12 +267,49 @@ async def update_expense(
         else:
             expense.payment_method_id = None
 
+    if data.issue_date is not None:
+        expense.issue_date = data.issue_date
+
+    if data.due_date is not None:
+        expense.due_date = data.due_date
+        if expense.installments_count == 1 and expense.payments:
+            expense.payments[0].due_date = data.due_date
+        elif expense.installments_count > 1 and expense.payments:
+            if all(p.status == "PENDENTE" for p in expense.payments):
+                start_due = date.fromisoformat(data.due_date)
+                for p in sorted(expense.payments, key=lambda x: x.installment_number):
+                    p.due_date = _add_months(start_due, p.installment_number - 1).isoformat()
+
+    if data.total_amount_cents is not None:
+        if expense.installments_count == 1:
+            expense.total_amount_cents = data.total_amount_cents
+            if expense.payments:
+                expense.payments[0].amount_cents = data.total_amount_cents
+        else:
+            if any(p.status == "CONCLUIDO" for p in expense.payments):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Não é possível alterar o valor total de uma despesa parcelada que já possui parcelas pagas."
+                )
+            expense.total_amount_cents = data.total_amount_cents
+            count = expense.installments_count
+            base_cents = data.total_amount_cents // count
+            remainder = data.total_amount_cents % count
+            for idx, p in enumerate(sorted(expense.payments, key=lambda x: x.installment_number)):
+                p.amount_cents = base_cents + (remainder if idx == 0 else 0)
+
     if data.description is not None:
         expense.description = data.description.strip()
     if data.essentiality is not None:
         expense.essentiality = data.essentiality
     if data.status is not None:
         expense.status = data.status
+        if expense.installments_count == 1 and expense.payments:
+            expense.payments[0].status = data.status
+            if data.status == "CONCLUIDO" and not expense.payments[0].paid_at:
+                expense.payments[0].paid_at = datetime.now(timezone.utc).isoformat()
+            elif data.status != "CONCLUIDO":
+                expense.payments[0].paid_at = None
     if data.is_recurring is not None:
         expense.is_recurring = data.is_recurring
     if data.notes is not None:

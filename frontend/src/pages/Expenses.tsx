@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   Trash2,
+  Edit2,
   AlertCircle,
   Repeat,
   CreditCard,
@@ -25,6 +26,7 @@ import {
   Contact,
   PaymentMethod,
   ExpenseCreateInput,
+  ExpenseUpdateInput,
   ItemCreateInput,
   ContactCreateInput,
   EssentialityType,
@@ -109,6 +111,23 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [quickContactName, setQuickContactName] = useState<string>("");
   const [quickContactPhone, setQuickContactPhone] = useState<string>("");
   const [isQuickContactSubmitting, setIsQuickContactSubmitting] = useState<boolean>(false);
+
+  // Edit Expense states
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editItemId, setEditItemId] = useState<string>("");
+  const [editContactId, setEditContactId] = useState<string>("");
+  const [editDescription, setEditDescription] = useState<string>("");
+  const [editAmountStr, setEditAmountStr] = useState<string>("");
+  const [editIssueDate, setEditIssueDate] = useState<string>("");
+  const [editDueDate, setEditDueDate] = useState<string>("");
+  const [editCategoryId, setEditCategoryId] = useState<string>("");
+  const [editPaymentMethodId, setEditPaymentMethodId] = useState<string>("");
+  const [editEssentiality, setEditEssentiality] = useState<EssentialityType>("NECESSARIO");
+  const [editIsRecurring, setEditIsRecurring] = useState<boolean>(false);
+  const [editNotes, setEditNotes] = useState<string>("");
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [isEditSubmitting, setIsEditSubmitting] = useState<boolean>(false);
 
   // Sincroniza abertura de modal disparada de fora (ex: atalhos do Dashboard)
   useEffect(() => {
@@ -238,6 +257,90 @@ export const Expenses: React.FC<ExpensesProps> = ({
       if (!formDescription.trim()) {
         setFormDescription(selectedItem.name);
       }
+    }
+  };
+
+  const handleSelectEditItem = (itemId: string) => {
+    setEditItemId(itemId);
+    if (!itemId) return;
+    const selectedItem = items.find((it) => it.id === itemId);
+    if (selectedItem) {
+      setEditCategoryId(selectedItem.category_id);
+      setEditEssentiality(selectedItem.nature);
+    }
+  };
+
+  const handleOpenEditModal = (expense: Expense) => {
+    setEditingExpense(expense);
+    setEditItemId(expense.item_id || "");
+    setEditContactId(expense.contact_id || "");
+    setEditDescription(expense.description);
+    setEditAmountStr((expense.total_amount_cents / 100).toFixed(2).replace(".", ","));
+    setEditIssueDate(expense.issue_date);
+    setEditDueDate(expense.due_date);
+    setEditCategoryId(expense.category_id || "");
+    setEditPaymentMethodId(expense.payment_method_id || "");
+    setEditEssentiality(expense.essentiality);
+    setEditIsRecurring(expense.is_recurring);
+    setEditNotes(expense.notes || "");
+    setEditFormError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+    setEditFormError(null);
+
+    if (!editItemId) {
+      setEditFormError("Selecione um item padronizado para a despesa.");
+      return;
+    }
+
+    if (!editContactId) {
+      setEditFormError("Selecione um contato para a despesa.");
+      return;
+    }
+
+    if (!editDescription.trim()) {
+      setEditFormError("A descrição da despesa é obrigatória.");
+      return;
+    }
+
+    const amountCents = parseAmountToCents(editAmountStr);
+    if (amountCents <= 0) {
+      setEditFormError("Informe um valor monetário válido maior que zero.");
+      return;
+    }
+
+    setIsEditSubmitting(true);
+    try {
+      const payload: ExpenseUpdateInput = {
+        description: editDescription.trim(),
+        item_id: editItemId,
+        contact_id: editContactId,
+        category_id: editCategoryId || null,
+        payment_method_id: editPaymentMethodId || null,
+        essentiality: editEssentiality,
+        total_amount_cents: amountCents,
+        issue_date: editIssueDate,
+        due_date: editDueDate,
+        is_recurring: editIsRecurring,
+        notes: editNotes.trim() || null,
+      };
+
+      await walletApi.updateExpense(editingExpense.id, payload);
+      setIsEditModalOpen(false);
+      loadData();
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "response" in err
+          ? ((err as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
+            "Erro ao atualizar a despesa.")
+          : "Erro ao atualizar a despesa. Verifique os dados.";
+      setEditFormError(errorMsg);
+    } finally {
+      setIsEditSubmitting(false);
     }
   };
 
@@ -394,6 +497,16 @@ export const Expenses: React.FC<ExpensesProps> = ({
   );
   const currentAmountCents = parseAmountToCents(formAmountStr);
   const currentInstallmentsCount = parseInt(formInstallmentsStr, 10) || 1;
+
+  const currentSelectedEditItem = items.find((it) => it.id === editItemId);
+  const currentSelectedEditCategory = categories.find(
+    (c) => c.id === (currentSelectedEditItem?.category_id || editCategoryId)
+  );
+  const hasPaidInstallments = Boolean(
+    editingExpense &&
+      editingExpense.installments_count > 1 &&
+      editingExpense.payments.some((p) => p.status === "CONCLUIDO")
+  );
 
   return (
     <div className="space-y-6">
@@ -740,6 +853,15 @@ export const Expenses: React.FC<ExpensesProps> = ({
                         )}
                       </button>
                     )}
+
+                    {/* Editar Despesa */}
+                    <button
+                      onClick={() => handleOpenEditModal(expense)}
+                      className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                      title="Editar despesa"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
 
                     {/* Excluir Despesa */}
                     <button
@@ -1131,6 +1253,300 @@ export const Expenses: React.FC<ExpensesProps> = ({
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Salvar Despesa</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Editar Despesa */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Editar Lançamento"
+        maxWidth="lg"
+      >
+        <form onSubmit={handleUpdateExpense} className="space-y-4">
+          {editFormError && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-700 dark:text-rose-300">
+              {editFormError}
+            </div>
+          )}
+
+          {/* Item Padronizado (Obrigatório) */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Item Padronizado *
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickItemCategoryId(editCategoryId || (categories[0]?.id ?? ""));
+                  setQuickItemNature(editEssentiality);
+                  setIsQuickItemModalOpen(true);
+                }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Novo Item</span>
+              </button>
+            </div>
+            <select
+              required
+              value={editItemId}
+              onChange={(e) => handleSelectEditItem(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              {items.length === 0 ? (
+                <option value="">Nenhum item disponível</option>
+              ) : (
+                items
+                  .filter((it) => it.is_active || it.id === editItemId)
+                  .map((it) => (
+                    <option key={it.id} value={it.id}>
+                      {it.name} ({it.category?.name || "Sem categoria"} &bull; {ESSENTIALITY_LABELS[it.nature]?.label || it.nature})
+                    </option>
+                  ))
+              )}
+            </select>
+          </div>
+
+          {/* Contato (Obrigatório) */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Contato *
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsQuickContactModalOpen(true)}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Novo Contato</span>
+              </button>
+            </div>
+            <select
+              required
+              value={editContactId}
+              onChange={(e) => setEditContactId(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              {contacts.length === 0 ? (
+                <option value="">Nenhum contato disponível</option>
+              ) : (
+                contacts
+                  .filter((ct) => ct.is_active || ct.id === editContactId)
+                  .map((ct) => (
+                    <option key={ct.id} value={ct.id}>
+                      {ct.name} {ct.phone ? `(${ct.phone})` : ""}
+                    </option>
+                  ))
+              )}
+            </select>
+          </div>
+
+          {/* Descrição */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Descrição da Despesa *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Supermercado Mensal, Aluguel, Farmácia"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Valor Total e Parcelamento Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Valor Total (R$) *
+                </label>
+                {hasPaidInstallments && (
+                  <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                    Bloqueado (parcelas pagas)
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                required
+                disabled={hasPaidInstallments}
+                placeholder="0,00"
+                value={editAmountStr}
+                onChange={(e) => setEditAmountStr(e.target.value)}
+                className={`w-full border rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  hasPaidInstallments
+                    ? "bg-zinc-100 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700/60 text-zinc-500 cursor-not-allowed"
+                    : "bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Estrutura de Parcelamento
+              </label>
+              <div className="bg-zinc-100/70 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2 text-sm">
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  {editingExpense && editingExpense.installments_count > 1
+                    ? `${editingExpense.installments_count} parcelas (${editingExpense.payments.filter((p) => p.status === "CONCLUIDO").length} pagas)`
+                    : "À vista (1 parcela)"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Datas: Realização e Vencimento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Data da Despesa *
+              </label>
+              <input
+                type="date"
+                required
+                value={editIssueDate}
+                onChange={(e) => setEditIssueDate(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Data de Vencimento *
+              </label>
+              <input
+                type="date"
+                required
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Categoria Vinculada e Natureza da Despesa (Automáticas do Item) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Categoria Vinculada
+              </label>
+              <div className="flex items-center space-x-2.5 bg-zinc-100/70 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2 text-sm">
+                <span
+                  className="w-3 h-3 rounded-full shrink-0 shadow-2xs"
+                  style={{
+                    backgroundColor:
+                      currentSelectedEditCategory?.color ||
+                      currentSelectedEditItem?.category?.color ||
+                      "#6366f1",
+                  }}
+                />
+                <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                  {currentSelectedEditCategory?.name ||
+                    currentSelectedEditItem?.category?.name ||
+                    "Automática pelo item"}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Natureza da Despesa
+              </label>
+              <div className="flex items-center justify-between bg-zinc-100/70 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-xl px-3.5 py-2">
+                {currentSelectedEditItem ? (
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                      ESSENTIALITY_LABELS[currentSelectedEditItem.nature]?.color || ""
+                    }`}
+                  >
+                    {ESSENTIALITY_LABELS[currentSelectedEditItem.nature]?.label ||
+                      currentSelectedEditItem.nature}
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                    Definida pelo item
+                  </span>
+                )}
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                  (automático do item)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Forma de Pagamento e Recorrência */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Forma de Pagamento
+              </label>
+              <select
+                value={editPaymentMethodId}
+                onChange={(e) => setEditPaymentMethodId(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Sem forma definida</option>
+                {paymentMethods.map((pm) => (
+                  <option key={pm.id} value={pm.id}>
+                    {pm.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pt-4">
+              <label className="flex items-center space-x-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editIsRecurring}
+                  onChange={(e) => setEditIsRecurring(e.target.checked)}
+                  className="rounded border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Despesa fixa mensal contínua
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Observações (Opcional)
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Detalhes adicionais, comprovante ou observações"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Botões do Rodapé */}
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isEditSubmitting}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isEditSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>Salvar Alterações</span>
             </button>
           </div>
         </form>
