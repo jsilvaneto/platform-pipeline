@@ -280,7 +280,7 @@ async def update_expense(
                 for p in sorted(expense.payments, key=lambda x: x.installment_number):
                     p.due_date = _add_months(start_due, p.installment_number - 1).isoformat()
 
-    if data.total_amount_cents is not None:
+    if data.total_amount_cents is not None and data.total_amount_cents != expense.total_amount_cents:
         if expense.installments_count == 1:
             expense.total_amount_cents = data.total_amount_cents
             if expense.payments:

@@ -14,6 +14,10 @@ class PaymentStatusUpdate(BaseModel):
     status: PaymentStatus
     paid_at: str | None = None
 
+class PaymentUpdate(BaseModel):
+    amount_cents: int | None = Field(default=None, gt=0, description="Novo valor monetário da parcela estritamente em centavos")
+    due_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="Data de vencimento (YYYY-MM-DD)")
+
 class PaymentResponse(PaymentBase):
     id: str
     user_id: str

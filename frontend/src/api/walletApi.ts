@@ -19,6 +19,7 @@ import {
   ExpenseFilterParams,
   Payment,
   PaymentStatusUpdateInput,
+  PaymentUpdateInput,
   DashboardMetrics,
   User,
   UserCreateInput,
@@ -151,6 +152,11 @@ export const walletApi = {
   },
 
   // Pagamentos / Parcelas
+  async updatePayment(paymentId: string, input: PaymentUpdateInput): Promise<Payment> {
+    const { data } = await api.patch<Payment>(`/payments/${paymentId}`, input);
+    return data;
+  },
+
   async updatePaymentStatus(paymentId: string, input: PaymentStatusUpdateInput): Promise<Payment> {
     const { data } = await api.patch<Payment>(`/payments/${paymentId}/status`, input);
     return data;

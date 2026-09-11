@@ -173,6 +173,11 @@ export interface PaymentStatusUpdateInput {
   paid_at?: string | null;
 }
 
+export interface PaymentUpdateInput {
+  amount_cents?: number;
+  due_date?: string;
+}
+
 export interface Expense {
   id: string;
   user_id: string;

@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
+  zIndex?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -15,6 +16,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   maxWidth = "md",
+  zIndex = "z-50",
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,7 +39,7 @@ export const Modal: React.FC<ModalProps> = ({
   }[maxWidth];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-sm animate-fade-in">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-sm animate-fade-in`}>
       <div
         className={`w-full ${maxWidthClass} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden`}
         role="dialog"

@@ -21,6 +21,7 @@ import { walletApi } from "../api/walletApi";
 import { Modal } from "../components/Modal";
 import {
   Expense,
+  Payment,
   Category,
   Item,
   Contact,
@@ -128,6 +129,14 @@ export const Expenses: React.FC<ExpensesProps> = ({
   const [editNotes, setEditNotes] = useState<string>("");
   const [editFormError, setEditFormError] = useState<string | null>(null);
   const [isEditSubmitting, setIsEditSubmitting] = useState<boolean>(false);
+
+  // Edit Payment (Parcela individual) states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+  const [selectedPaymentExpense, setSelectedPaymentExpense] = useState<Expense | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [paymentAmountStr, setPaymentAmountStr] = useState<string>("");
+  const [paymentFormError, setPaymentFormError] = useState<string | null>(null);
+  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState<boolean>(false);
 
   // Sincroniza abertura de modal disparada de fora (ex: atalhos do Dashboard)
   useEffect(() => {
@@ -341,6 +350,80 @@ export const Expenses: React.FC<ExpensesProps> = ({
       setEditFormError(errorMsg);
     } finally {
       setIsEditSubmitting(false);
+    }
+  };
+
+  const handleOpenEditPaymentModal = (expense: Expense, payment: Payment) => {
+    setSelectedPaymentExpense(expense);
+    setSelectedPayment(payment);
+    setPaymentAmountStr((payment.amount_cents / 100).toFixed(2).replace(".", ","));
+    setPaymentFormError(null);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleUpdatePaymentAmount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPayment || !selectedPaymentExpense) return;
+
+    const amountCents = parseAmountToCents(paymentAmountStr);
+    if (amountCents <= 0) {
+      setPaymentFormError("Informe um valor monetário válido maior que zero.");
+      return;
+    }
+
+    setIsPaymentSubmitting(true);
+    setPaymentFormError(null);
+
+    try {
+      const updatedPayment = await walletApi.updatePayment(selectedPayment.id, {
+        amount_cents: amountCents,
+      });
+
+      // Atualiza o estado local das despesas refletindo apenas a parcela alterada e o novo total
+      setExpenses((prevExpenses) =>
+        prevExpenses.map((exp) => {
+          if (exp.id !== selectedPaymentExpense.id) return exp;
+          const updatedPayments = exp.payments.map((p) =>
+            p.id === updatedPayment.id ? { ...p, amount_cents: updatedPayment.amount_cents } : p
+          );
+          const newTotalCents = updatedPayments.reduce((sum, p) => sum + p.amount_cents, 0);
+          return {
+            ...exp,
+            total_amount_cents: newTotalCents,
+            payments: updatedPayments,
+          };
+        })
+      );
+
+      // Se o modal de edição deste registro estiver aberto, sincroniza seus valores
+      if (editingExpense && editingExpense.id === selectedPaymentExpense.id) {
+        setEditingExpense((prev) => {
+          if (!prev) return null;
+          const updatedPayments = prev.payments.map((p) =>
+            p.id === updatedPayment.id ? { ...p, amount_cents: updatedPayment.amount_cents } : p
+          );
+          const newTotalCents = updatedPayments.reduce((sum, p) => sum + p.amount_cents, 0);
+          setEditAmountStr((newTotalCents / 100).toFixed(2).replace(".", ","));
+          return {
+            ...prev,
+            total_amount_cents: newTotalCents,
+            payments: updatedPayments,
+          };
+        });
+      }
+
+      setIsPaymentModalOpen(false);
+      setSelectedPayment(null);
+      setSelectedPaymentExpense(null);
+    } catch (err: unknown) {
+      const errorMsg =
+        err && typeof err === "object" && "response" in err
+          ? ((err as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
+            "Erro ao atualizar o valor da parcela.")
+          : "Erro ao atualizar o valor da parcela. Verifique os dados.";
+      setPaymentFormError(errorMsg);
+    } finally {
+      setIsPaymentSubmitting(false);
     }
   };
 
@@ -895,10 +978,18 @@ export const Expenses: React.FC<ExpensesProps> = ({
                             </span>
                           </div>
 
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                          <div className="flex items-center space-x-1.5">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mr-0.5">
                               {formatCurrency(p.amount_cents)}
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditPaymentModal(expense, p)}
+                              className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                              title="Editar valor desta parcela"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={() => handleTogglePaymentStatus(p.id, p.status)}
                               className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -1387,6 +1478,11 @@ export const Expenses: React.FC<ExpensesProps> = ({
                     : "bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
                 }`}
               />
+              {hasPaidInstallments && (
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 block">
+                  Para alterar valores com parcelas pagas, edite a parcela desejada na seção abaixo.
+                </span>
+              )}
             </div>
 
             <div>
@@ -1402,6 +1498,63 @@ export const Expenses: React.FC<ExpensesProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Seção de Edição Individual de Parcelas (Quando parcelado) */}
+          {editingExpense && editingExpense.installments_count > 1 && (
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 bg-zinc-50/70 dark:bg-zinc-950/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                    Parcelas deste Registro
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Edite o valor de uma parcela individual. As outras parcelas permanecerão inalteradas.
+                  </p>
+                </div>
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                {editingExpense.payments.map((p) => (
+                  <div
+                    key={p.id}
+                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 flex items-center justify-between text-xs shadow-2xs"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                        Parcela {p.installment_number}/{editingExpense.installments_count}
+                      </span>
+                      <span className="text-[11px] text-zinc-400">
+                        • {formatDate(p.due_date)}
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          p.status === "CONCLUIDO"
+                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                        }`}
+                      >
+                        {p.status === "CONCLUIDO" ? "Paga" : "Pendente"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                        {formatCurrency(p.amount_cents)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditPaymentModal(editingExpense, p)}
+                        className="px-2.5 py-1 bg-zinc-100 hover:bg-blue-50 text-zinc-700 hover:text-blue-600 dark:bg-zinc-800 dark:hover:bg-blue-950/60 dark:text-zinc-300 dark:hover:text-blue-400 rounded-lg text-xs font-semibold transition-colors flex items-center space-x-1"
+                        title="Editar valor apenas desta parcela"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Editar</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Datas: Realização e Vencimento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1677,6 +1830,112 @@ export const Expenses: React.FC<ExpensesProps> = ({
             >
               {isQuickContactSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Criar Contato</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Editar Valor de Parcela Individual */}
+      <Modal
+        isOpen={isPaymentModalOpen}
+        onClose={() => {
+          setIsPaymentModalOpen(false);
+          setSelectedPayment(null);
+          setSelectedPaymentExpense(null);
+        }}
+        title="Editar Valor da Parcela"
+        maxWidth="sm"
+        zIndex="z-[60]"
+      >
+        <form onSubmit={handleUpdatePaymentAmount} className="space-y-4">
+          {/* Informações de Contexto da Parcela */}
+          <div className="p-3 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-xl space-y-1.5 text-xs">
+            <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+              <span>Registro:</span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[180px]">
+                {selectedPaymentExpense?.description}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+              <span>Parcela:</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">
+                Parcela {selectedPayment?.installment_number} de {selectedPaymentExpense?.installments_count}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+              <span>Vencimento:</span>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                {selectedPayment ? formatDate(selectedPayment.due_date) : ""}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+              <span>Status:</span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                  selectedPayment?.status === "CONCLUIDO"
+                    ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                    : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                }`}
+              >
+                {selectedPayment?.status === "CONCLUIDO" ? "Paga" : "Pendente"}
+              </span>
+            </div>
+          </div>
+
+          {/* Aviso explicativo */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl text-xs text-blue-700 dark:text-blue-300 flex items-start space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Esta alteração afetará <strong>apenas esta parcela</strong>. As demais parcelas do registro não serão alteradas e o valor total será sincronizado automaticamente.
+            </span>
+          </div>
+
+          {paymentFormError && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-700 dark:text-rose-300">
+              {paymentFormError}
+            </div>
+          )}
+
+          {/* Campo Novo Valor */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              Novo Valor da Parcela (R$) *
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                R$
+              </span>
+              <input
+                type="text"
+                required
+                autoFocus
+                placeholder="0,00"
+                value={paymentAmountStr}
+                onChange={(e) => setPaymentAmountStr(e.target.value)}
+                className="w-full pl-10 pr-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => {
+                setIsPaymentModalOpen(false);
+                setSelectedPayment(null);
+                setSelectedPaymentExpense(null);
+              }}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isPaymentSubmitting}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isPaymentSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>{isPaymentSubmitting ? "Salvando..." : "Salvar Parcela"}</span>
             </button>
           </div>
         </form>
