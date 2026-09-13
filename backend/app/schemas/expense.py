@@ -65,3 +65,4 @@ class ExpenseFilter(BaseModel):
     contact_id: str | None = None
     payment_method_id: str | None = None
     essentiality: EssentialityType | None = None
+    is_overdue: bool | None = Field(default=None, description="Filtra apenas despesas com pagamentos pendentes em atraso")

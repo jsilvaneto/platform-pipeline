@@ -1,3 +1,4 @@
+import calendar
 from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -8,16 +9,22 @@ from app.models.expense import Expense
 from app.schemas.dashboard import (
     DashboardMetrics,
     MonthlySpending,
+    DailySpending,
     CategorySpending,
     ItemSpending,
     EssentialitySpending,
     UpcomingPayment,
+    OverduePayment,
 )
 from app.services.expense_service import ensure_recurring_horizon
 
 MONTH_NAMES: list[str] = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
     "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+]
+
+WEEKDAY_NAMES: list[str] = [
+    "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom",
 ]
 
 async def get_dashboard_metrics(
@@ -63,43 +70,104 @@ async def get_dashboard_metrics(
     total_paid_cents = sum(p.amount_cents for p in payments if p.status == "CONCLUIDO")
     total_pending_cents = sum(p.amount_cents for p in payments if p.status == "PENDENTE")
 
-    # Vencidos no ano informado (parcelas pendentes com data anterior a hoje no ano de referência)
-    overdue_query = select(Payment).where(
-        Payment.user_id == user_id,
-        Payment.status == "PENDENTE",
-        Payment.due_date < today_str,
-        Payment.due_date.startswith(str(target_year)),
+    # Vencidos cumulativos históricos (todas as parcelas pendentes com data anterior a hoje)
+    overdue_query = (
+        select(Payment)
+        .join(Payment.expense)
+        .options(
+            selectinload(Payment.expense).selectinload(Expense.category),
+            selectinload(Payment.expense).selectinload(Expense.contact),
+        )
+        .where(
+            Payment.user_id == user_id,
+            Payment.status == "PENDENTE",
+            Payment.due_date < today_str,
+        )
+        .order_by(Payment.due_date.asc())
     )
     overdue_res = await db.execute(overdue_query)
-    overdue_payments = overdue_res.scalars().all()
-    total_overdue_cents = sum(p.amount_cents for p in overdue_payments)
+    overdue_payments_db = overdue_res.scalars().all()
+    total_overdue_cents = sum(p.amount_cents for p in overdue_payments_db)
 
-    # Detalhamento mês a mês dos 12 meses do ano
-    monthly_map: dict[int, dict[str, int]] = {
-        m: {"total_cents": 0, "paid_cents": 0, "pending_cents": 0} for m in range(1, 13)
-    }
-    for p in payments:
-        try:
-            p_month = int(p.due_date.split("-")[1])
-            if 1 <= p_month <= 12:
-                monthly_map[p_month]["total_cents"] += p.amount_cents
-                if p.status == "CONCLUIDO":
-                    monthly_map[p_month]["paid_cents"] += p.amount_cents
-                elif p.status == "PENDENTE":
-                    monthly_map[p_month]["pending_cents"] += p.amount_cents
-        except (IndexError, ValueError):
-            continue
-
-    monthly_breakdown = [
-        MonthlySpending(
-            month=m,
-            month_name=MONTH_NAMES[m - 1],
-            total_cents=monthly_map[m]["total_cents"],
-            paid_cents=monthly_map[m]["paid_cents"],
-            pending_cents=monthly_map[m]["pending_cents"],
+    overdue_payments = [
+        OverduePayment(
+            payment_id=p.id,
+            expense_id=p.expense_id,
+            description=p.expense.description,
+            installment_text=f"{p.installment_number}/{p.expense.installments_count}" if p.expense.installments_count > 1 else ("Recorrente" if p.expense.is_recurring else "À vista"),
+            amount_cents=p.amount_cents,
+            due_date=p.due_date,
+            days_overdue=max(1, (today - date.fromisoformat(p.due_date)).days),
+            category_name=p.expense.category.name if p.expense.category else "Geral",
+            color=p.expense.category.color if p.expense.category else "#ef4444",
+            contact_name=p.expense.contact.name if p.expense.contact else None,
         )
-        for m in range(1, 13)
+        for p in overdue_payments_db
     ]
+
+    monthly_breakdown: list[MonthlySpending] = []
+    daily_breakdown: list[DailySpending] = []
+
+    if month:
+        # Visão Mensal: quebra por dias do mês
+        year_num, month_num = int(month.split("-")[0]), int(month.split("-")[1])
+        _, num_days = calendar.monthrange(year_num, month_num)
+
+        daily_map: dict[int, dict[str, int]] = {
+            d: {"total_cents": 0, "paid_cents": 0, "pending_cents": 0} for d in range(1, num_days + 1)
+        }
+
+        for p in payments:
+            try:
+                p_day = int(p.due_date.split("-")[2])
+                if 1 <= p_day <= num_days:
+                    daily_map[p_day]["total_cents"] += p.amount_cents
+                    if p.status == "CONCLUIDO":
+                        daily_map[p_day]["paid_cents"] += p.amount_cents
+                    elif p.status == "PENDENTE":
+                        daily_map[p_day]["pending_cents"] += p.amount_cents
+            except (IndexError, ValueError):
+                continue
+
+        for d in range(1, num_days + 1):
+            curr_date = date(year_num, month_num, d)
+            daily_breakdown.append(
+                DailySpending(
+                    day=d,
+                    date=curr_date.isoformat(),
+                    weekday_name=WEEKDAY_NAMES[curr_date.weekday()],
+                    total_cents=daily_map[d]["total_cents"],
+                    paid_cents=daily_map[d]["paid_cents"],
+                    pending_cents=daily_map[d]["pending_cents"],
+                )
+            )
+    else:
+        # Visão Anual: detalhamento mês a mês dos 12 meses do ano
+        monthly_map: dict[int, dict[str, int]] = {
+            m: {"total_cents": 0, "paid_cents": 0, "pending_cents": 0} for m in range(1, 13)
+        }
+        for p in payments:
+            try:
+                p_month = int(p.due_date.split("-")[1])
+                if 1 <= p_month <= 12:
+                    monthly_map[p_month]["total_cents"] += p.amount_cents
+                    if p.status == "CONCLUIDO":
+                        monthly_map[p_month]["paid_cents"] += p.amount_cents
+                    elif p.status == "PENDENTE":
+                        monthly_map[p_month]["pending_cents"] += p.amount_cents
+            except (IndexError, ValueError):
+                continue
+
+        monthly_breakdown = [
+            MonthlySpending(
+                month=m,
+                month_name=MONTH_NAMES[m - 1],
+                total_cents=monthly_map[m]["total_cents"],
+                paid_cents=monthly_map[m]["paid_cents"],
+                pending_cents=monthly_map[m]["pending_cents"],
+            )
+            for m in range(1, 13)
+        ]
 
     # Agrupamento por categoria
     category_map: dict[str, dict] = {}
@@ -224,13 +292,17 @@ async def get_dashboard_metrics(
     return DashboardMetrics(
         period=period,
         year=target_year,
+        month=month,
+        view_mode="monthly" if month else "annual",
         total_expenses_cents=total_expenses_cents,
         total_paid_cents=total_paid_cents,
         total_pending_cents=total_pending_cents,
         total_overdue_cents=total_overdue_cents,
         monthly_breakdown=monthly_breakdown,
+        daily_breakdown=daily_breakdown,
         by_category=by_category,
         by_item=by_item,
         by_essentiality=by_essentiality,
         upcoming_payments=upcoming_payments,
+        overdue_payments=overdue_payments,
     )

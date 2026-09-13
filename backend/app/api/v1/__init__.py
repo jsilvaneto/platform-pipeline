@@ -11,6 +11,7 @@ from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.commitments import router as commitments_router
 from app.api.v1.system import router as system_router
 from app.api.v1.backups import router as backups_router
+from app.api.v1.calendar import router as calendar_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -26,5 +27,7 @@ api_router.include_router(dashboard_router)
 api_router.include_router(commitments_router)
 api_router.include_router(system_router)
 api_router.include_router(backups_router)
+api_router.include_router(calendar_router)
+
 
 

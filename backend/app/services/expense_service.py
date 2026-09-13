@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, date
 from collections.abc import Sequence
 from fastapi import HTTPException, status
-from sqlalchemy import select, func, distinct
+from sqlalchemy import select, func, distinct, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -317,6 +317,14 @@ async def list_expenses(
     if filter_params.essentiality:
         query = query.where(Expense.essentiality == filter_params.essentiality)
         count_query = count_query.where(Expense.essentiality == filter_params.essentiality)
+
+    if filter_params.is_overdue:
+        today_str = date.today().isoformat()
+        overdue_cond = Expense.payments.any(
+            and_(Payment.status == "PENDENTE", Payment.due_date < today_str)
+        )
+        query = query.where(overdue_cond)
+        count_query = count_query.where(overdue_cond)
 
     total_count = await db.scalar(count_query) or 0
 

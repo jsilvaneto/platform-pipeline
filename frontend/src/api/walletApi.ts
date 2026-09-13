@@ -35,6 +35,7 @@ import {
   BackupCreateResponse,
   BackupRestoreRequest,
   BackupRestoreResponse,
+  CalendarMonthResponse,
 } from "../types";
 
 
@@ -189,6 +190,14 @@ export const walletApi = {
   async getDashboardMetrics(params?: { year?: number; month?: string }): Promise<DashboardMetrics> {
     const { data } = await api.get<DashboardMetrics>("/dashboard/metrics", {
       params,
+    });
+    return data;
+  },
+
+  // Calendário Financeiro
+  async getCalendarMonth(month: string): Promise<CalendarMonthResponse> {
+    const { data } = await api.get<CalendarMonthResponse>("/calendar/month", {
+      params: { month },
     });
     return data;
   },

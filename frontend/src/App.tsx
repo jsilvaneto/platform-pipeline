@@ -5,6 +5,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Expenses } from "./pages/Expenses";
 import { Commitments } from "./pages/Commitments";
+import { Calendar } from "./pages/Calendar";
 import { Contacts } from "./pages/Contacts";
 import { Settings } from "./pages/Settings";
 import { Layout } from "./components/Layout";
@@ -49,6 +50,14 @@ const MainApp: React.FC = () => {
         <Expenses
           isCreateModalOpenExternal={isExpenseModalRequested}
           onCloseCreateModalExternal={() => setIsExpenseModalRequested(false)}
+        />
+      )}
+      {currentTab === "calendario" && (
+        <Calendar
+          onOpenNewExpenseModal={() => {
+            setCurrentTab("registros");
+            setIsExpenseModalRequested(true);
+          }}
         />
       )}
       {currentTab === "compromissos" && (

@@ -39,17 +39,42 @@ class ItemSpending(BaseModel):
     total_cents: int
     percentage: float
 
+class OverduePayment(BaseModel):
+    payment_id: str
+    expense_id: str
+    description: str
+    installment_text: str
+    amount_cents: int
+    due_date: str
+    days_overdue: int
+    category_name: str
+    color: str
+    contact_name: str | None = None
+
+class DailySpending(BaseModel):
+    day: int = Field(..., ge=1, le=31, description="Dia do mês (1-31)")
+    date: str = Field(..., description="Data completa (YYYY-MM-DD)")
+    weekday_name: str = Field(..., description="Nome abreviado do dia da semana (Seg, Ter, etc.)")
+    total_cents: int = Field(default=0, description="Total de despesas do dia em centavos")
+    paid_cents: int = Field(default=0, description="Total pago do dia em centavos")
+    pending_cents: int = Field(default=0, description="Total pendente do dia em centavos")
+
 class DashboardMetrics(BaseModel):
     period: str = Field(..., description="Período de referência (Ano ou Ano-Mês)")
     year: int = Field(..., description="Ano de referência (ex: 2026)")
+    month: str | None = Field(default=None, description="Mês selecionado no formato YYYY-MM se em modo mensal")
+    view_mode: str = Field(default="annual", description="Modo de visualização: 'annual' ou 'monthly'")
     total_expenses_cents: int = Field(default=0, description="Total geral de despesas do período em centavos")
     total_paid_cents: int = Field(default=0, description="Total já liquidado/pago no período em centavos")
     total_pending_cents: int = Field(default=0, description="Total a pagar no período em centavos")
-    total_overdue_cents: int = Field(default=0, description="Total vencido e não pago em centavos")
+    total_overdue_cents: int = Field(default=0, description="Total vencido e não pago cumulativo em centavos")
     monthly_breakdown: list[MonthlySpending] = []
+    daily_breakdown: list[DailySpending] = []
     by_category: list[CategorySpending] = []
     by_item: list[ItemSpending] = []
     by_essentiality: list[EssentialitySpending] = []
     upcoming_payments: list[UpcomingPayment] = []
+    overdue_payments: list[OverduePayment] = []
+
 
 

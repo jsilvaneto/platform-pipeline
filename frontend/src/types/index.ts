@@ -10,7 +10,7 @@ export type PaymentMethodType =
   | "BOLETO"
   | "OUTRO";
 
-export type NavTab = "inicio" | "registros" | "compromissos" | "contatos" | "configuracoes";
+export type NavTab = "inicio" | "registros" | "calendario" | "compromissos" | "contatos" | "configuracoes";
 
 export interface User {
   id: string;
@@ -242,6 +242,7 @@ export interface ExpenseFilterParams {
   contact_id?: string;
   payment_method_id?: string;
   essentiality?: EssentialityType;
+  is_overdue?: boolean;
   page?: number;
   page_size?: number;
 }
@@ -263,17 +264,17 @@ export interface CategorySpending {
   percentage: number;
 }
 
+export interface EssentialitySpending {
+  essentiality: EssentialityType;
+  total_cents: number;
+  percentage: number;
+}
+
 export interface ItemSpending {
   item_id: string | null;
   item_name: string;
   category_name: string;
   nature: EssentialityType;
-  total_cents: number;
-  percentage: number;
-}
-
-export interface EssentialitySpending {
-  essentiality: EssentialityType;
   total_cents: number;
   percentage: number;
 }
@@ -290,6 +291,28 @@ export interface UpcomingPayment {
   status: ExpenseStatus;
 }
 
+export interface OverduePayment {
+  payment_id: string;
+  expense_id: string;
+  description: string;
+  installment_text: string;
+  amount_cents: number;
+  due_date: string;
+  days_overdue: number;
+  category_name: string;
+  color: string;
+  contact_name?: string | null;
+}
+
+export interface DailySpending {
+  day: number;
+  date: string;
+  weekday_name: string;
+  total_cents: number;
+  paid_cents: number;
+  pending_cents: number;
+}
+
 export interface MonthlySpending {
   month: number;
   month_name: string;
@@ -301,17 +324,66 @@ export interface MonthlySpending {
 export interface DashboardMetrics {
   period: string;
   year: number;
+  month?: string | null;
+  view_mode?: "annual" | "monthly";
   total_expenses_cents: number;
   total_paid_cents: number;
   total_pending_cents: number;
   total_overdue_cents: number;
   monthly_breakdown: MonthlySpending[];
+  daily_breakdown?: DailySpending[];
   by_category: CategorySpending[];
   by_item: ItemSpending[];
   by_essentiality: EssentialitySpending[];
   upcoming_payments: UpcomingPayment[];
+  overdue_payments?: OverduePayment[];
 }
 
+export interface CalendarPaymentItem {
+  payment_id: string;
+  expense_id: string;
+  description: string;
+  installment_text: string;
+  amount_cents: number;
+  due_date: string;
+  status: ExpenseStatus;
+  paid_at?: string | null;
+  is_recurring: boolean;
+  is_overdue: boolean;
+  category_name: string;
+  category_color: string;
+  category_icon: string;
+  contact_name?: string | null;
+}
+
+export interface CalendarDay {
+  date: string;
+  day: number;
+  weekday: number;
+  weekday_name: string;
+  is_current_month: boolean;
+  is_today: boolean;
+  total_cents: number;
+  paid_cents: number;
+  pending_cents: number;
+  overdue_cents: number;
+  has_overdue: boolean;
+  payments: CalendarPaymentItem[];
+}
+
+export interface CalendarMonthResponse {
+  month: string;
+  year: number;
+  month_num: number;
+  month_name: string;
+  total_cents: number;
+  paid_cents: number;
+  pending_cents: number;
+  overdue_cents: number;
+  peak_day?: string | null;
+  peak_day_amount_cents: number;
+  days: CalendarDay[];
+}
 
 export interface DatabaseDiagnostics {
   engine: string;

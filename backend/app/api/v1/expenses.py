@@ -27,6 +27,7 @@ async def list_expenses(
     contact_id: str | None = Query(default=None, description="Filtrar por ID do contato"),
     payment_method_id: str | None = Query(default=None, description="Filtrar por forma de pagamento"),
     essentiality: EssentialityType | None = Query(default=None, description="Filtrar por essencialidade"),
+    is_overdue: bool | None = Query(default=None, description="Filtrar despesas com parcelas pendentes em atraso"),
     page: int | None = Query(default=None, ge=1, description="Número da página (1-based)"),
     page_size: int | None = Query(default=None, ge=1, le=100, description="Quantidade de registros por página"),
     db: AsyncSession = Depends(get_db),
@@ -41,6 +42,7 @@ async def list_expenses(
         contact_id=contact_id,
         payment_method_id=payment_method_id,
         essentiality=essentiality,
+        is_overdue=is_overdue,
     )
     items, total_count = await expense_service.list_expenses(
         db, current_user.id, filters, page=page, page_size=page_size

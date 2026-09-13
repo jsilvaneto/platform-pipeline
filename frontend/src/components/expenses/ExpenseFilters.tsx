@@ -3,8 +3,8 @@ import { Filter } from "lucide-react";
 import { Category, Item, Contact, EssentialityType, ExpenseStatus } from "../../types";
 
 interface ExpenseFiltersProps {
-  statusFilter: ExpenseStatus | "ALL";
-  setStatusFilter: (val: ExpenseStatus | "ALL") => void;
+  statusFilter: ExpenseStatus | "ALL" | "OVERDUE";
+  setStatusFilter: (val: ExpenseStatus | "ALL" | "OVERDUE") => void;
   categoryFilter: string;
   setCategoryFilter: (val: string) => void;
   itemFilter: string;
@@ -46,11 +46,12 @@ export const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
         {/* Filtro Status */}
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as ExpenseStatus | "ALL")}
+          onChange={(e) => setStatusFilter(e.target.value as ExpenseStatus | "ALL" | "OVERDUE")}
           className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="ALL">Status: Todos</option>
           <option value="PENDENTE">Apenas Pendentes</option>
+          <option value="OVERDUE">⚠️ Apenas Atrasadas</option>
           <option value="CONCLUIDO">Apenas Concluídos</option>
         </select>
 

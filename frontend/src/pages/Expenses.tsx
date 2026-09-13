@@ -36,7 +36,7 @@ export const Expenses: React.FC<ExpensesProps> = ({
 
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
-  const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "ALL" | "OVERDUE">("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [itemFilter, setItemFilter] = useState<string>("ALL");
   const [contactFilter, setContactFilter] = useState<string>("ALL");
@@ -105,9 +105,14 @@ export const Expenses: React.FC<ExpensesProps> = ({
     setIsLoading(true);
     setError(null);
     try {
+      const isOverdueFilter = statusFilter === "OVERDUE";
+      const statusParam =
+        statusFilter === "ALL" || statusFilter === "OVERDUE" ? undefined : statusFilter;
+
       const result = await walletApi.getPaginatedExpenses({
         month: selectedMonth,
-        status: statusFilter === "ALL" ? undefined : statusFilter,
+        status: statusParam,
+        is_overdue: isOverdueFilter ? true : undefined,
         category_id: categoryFilter === "ALL" ? undefined : categoryFilter,
         item_id: itemFilter === "ALL" ? undefined : itemFilter,
         contact_id: contactFilter === "ALL" ? undefined : contactFilter,
