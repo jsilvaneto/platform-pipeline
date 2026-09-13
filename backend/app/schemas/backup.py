@@ -8,7 +8,22 @@ class GoogleDriveConfigStatus(BaseModel):
     is_configured: bool = Field(..., description="Indica se credenciais e pasta foram configuradas")
     connection_ok: bool = Field(..., description="Indica se a conexão de teste com a Google API foi bem-sucedida")
     folder_id: str | None = Field(default=None, description="ID da pasta destino no Google Drive")
-    service_account_email: str | None = Field(default=None, description="Email da Service Account extraído do JSON")
+    auth_type: Literal["oauth2", "service_account"] | None = Field(
+        default=None,
+        description="Tipo de autenticação ativa (oauth2 para contas pessoais @gmail.com ou service_account para Shared Drives)",
+    )
+    account_email: str | None = Field(
+        default=None,
+        description="E-mail do usuário conectado via OAuth 2.0 ou da Service Account",
+    )
+    oauth_client_configured: bool = Field(
+        default=False,
+        description="Indica se o Client ID e Client Secret do OAuth 2.0 já foram informados",
+    )
+    service_account_email: str | None = Field(
+        default=None,
+        description="Email da Service Account extraído do JSON (retrocompatibilidade)",
+    )
     retention_days: int = Field(default=30, description="Período de retenção em dias para rotação automática")
     status_message: str = Field(..., description="Mensagem explicativa legível do status")
 
@@ -73,3 +88,41 @@ class BackupRestoreResponse(BaseModel):
     success: bool = Field(..., description="Indica se o restore foi concluído com sucesso")
     message: str = Field(..., description="Mensagem de status do processo de restauração")
     restored_at: str = Field(..., description="Timestamp ISO da restauração")
+
+
+class GoogleDriveConfigUpdateRequest(BaseModel):
+    """Payload para atualização de configurações do Google Drive via UI."""
+
+    folder_id: str | None = Field(default=None, description="ID ou URL da pasta no Google Drive")
+    retention_days: int = Field(default=30, ge=1, le=3650, description="Dias de retenção de backups (1 a 3650)")
+
+
+class GoogleOAuthInitRequest(BaseModel):
+    """Solicitação para inicializar a autorização OAuth 2.0."""
+
+    redirect_uri: str = Field(..., description="URL de retorno da aplicação onde o Google enviará o código")
+    client_id: str | None = Field(default=None, description="Client ID OAuth (opcional se já salvo anteriormente)")
+    client_secret: str | None = Field(default=None, description="Client Secret OAuth (opcional se já salvo anteriormente)")
+
+
+class GoogleOAuthInitResponse(BaseModel):
+    """Resposta com a URL para o usuário autorizar o acesso à sua conta pessoal Google Drive."""
+
+    auth_url: str = Field(..., description="URL de consentimento do Google")
+    redirect_uri: str = Field(..., description="URI de redirecionamento autorizada")
+
+
+class GoogleOAuthExchangeRequest(BaseModel):
+    """Payload para troca do código de autorização do Google pelo refresh token."""
+
+    code: str = Field(..., description="Código de autorização retornado pelo Google na query string")
+    redirect_uri: str = Field(..., description="A mesma URI de redirecionamento utilizada na inicialização")
+    folder_id: str | None = Field(default=None, description="ID ou URL da pasta de backups no Google Drive pessoal")
+
+
+class GoogleOAuthClientSaveRequest(BaseModel):
+    """Payload para salvar diretamente o Client ID e Client Secret."""
+
+    client_id: str = Field(..., min_length=5, description="Client ID gerado no Google Cloud Console")
+    client_secret: str = Field(..., min_length=5, description="Client Secret gerado no Google Cloud Console")
+

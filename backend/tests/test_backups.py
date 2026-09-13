@@ -38,7 +38,7 @@ class TestBackupServiceAndSchemas(unittest.TestCase):
 
     def test_get_status_unconfigured_drive(self):
         """Garante retorno gracioso e seguro quando o Google Drive ainda não foi configurado."""
-        with patch.object(BackupService, "_get_drive_client", return_value=(None, None, "Sem credenciais")):
+        with patch.object(BackupService, "_get_drive_client", return_value=(None, None, "Sem credenciais", None)):
             with patch.object(BackupService, "resolve_backups_dir", return_value=Path(self.test_dir)):
                 status_res = BackupService.get_status()
                 self.assertIsInstance(status_res, BackupStatusResponse)
@@ -57,7 +57,7 @@ class TestBackupServiceAndSchemas(unittest.TestCase):
         fake_dump_2 = backup_dir_path / "wallet_backup_20260911_150000.dump"
         fake_dump_2.write_bytes(b"PGDUMP_TEST_CONTENT_2" * 200)
 
-        with patch.object(BackupService, "_get_drive_client", return_value=(None, None, None)):
+        with patch.object(BackupService, "_get_drive_client", return_value=(None, None, None, None)):
             with patch.object(BackupService, "resolve_backups_dir", return_value=backup_dir_path):
                 list_res = BackupService.list_backups()
                 self.assertIsInstance(list_res, BackupListResponse)
@@ -94,6 +94,76 @@ class TestBackupServiceAndSchemas(unittest.TestCase):
         self.assertFalse(resp.uploaded_to_gdrive)
         self.assertEqual(resp.size_pretty, "1.00 MB")
 
+    def test_sanitize_folder_id(self):
+        """Valida a extração resiliente do ID da pasta do Google Drive a partir de URLs ou códigos."""
+        raw_id = "1AbCdEfGhIjKlMnOpQrStUvWxYz12345"
+        self.assertEqual(BackupService._sanitize_folder_id(raw_id), raw_id)
+
+        full_url = "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz12345"
+        self.assertEqual(BackupService._sanitize_folder_id(full_url), raw_id)
+
+        url_with_query = "https://drive.google.com/drive/u/1/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz12345?usp=sharing"
+        self.assertEqual(BackupService._sanitize_folder_id(url_with_query), raw_id)
+
+        self.assertIsNone(BackupService._sanitize_folder_id(None))
+        self.assertIsNone(BackupService._sanitize_folder_id("   "))
+
+    def test_save_gdrive_config_and_status(self):
+        """Valida a persistência do ID de pasta e retenção sem efeitos colaterais (resíduo zero)."""
+        with patch.object(BackupService, "resolve_backups_dir", return_value=Path(self.test_dir)):
+            with patch.object(BackupService, "_get_drive_client", return_value=(None, None, "Sem credenciais", None)):
+                status = BackupService.save_gdrive_config(
+                    folder_id="https://drive.google.com/drive/folders/test_folder_id_123",
+                    retention_days=45,
+                )
+                self.assertIsInstance(status, BackupStatusResponse)
+                self.assertEqual(status.google_drive.folder_id, "test_folder_id_123")
+                self.assertEqual(status.google_drive.retention_days, 45)
+
+                # Verifica arquivo salvo no diretório temporário
+                cfg_file = Path(self.test_dir) / "gdrive_config.json"
+                self.assertTrue(cfg_file.is_file())
+
+    def test_save_credentials_file_validation(self):
+        """Valida a rejeição de arquivos inválidos e aceitação de Service Account legítima."""
+        # 1. Arquivo não-JSON
+        with self.assertRaises(ValueError):
+            BackupService.save_credentials_file(b"invalid content not json")
+
+        # 2. JSON sem campos de credenciais
+        with self.assertRaises(ValueError):
+            BackupService.save_credentials_file(b'{"key": "value"}')
+
+        # 3. JSON válido de Service Account
+        valid_sa = b'{"type": "service_account", "client_email": "bot@proj.iam.gserviceaccount.com", "private_key": "-----BEGIN PRIVATE KEY-----\\nfake\\n-----END PRIVATE KEY-----"}'
+        with patch.object(BackupService, "resolve_backups_dir", return_value=Path(self.test_dir)):
+            with patch.object(BackupService, "_get_drive_client", return_value=(None, "bot@proj.iam.gserviceaccount.com", None, "service_account")):
+                status, email = BackupService.save_credentials_file(valid_sa)
+                self.assertEqual(email, "bot@proj.iam.gserviceaccount.com")
+                creds_file = Path(self.test_dir) / "credentials.json"
+                self.assertTrue(creds_file.is_file())
+
+    def test_save_credentials_oauth_client_json_detection(self):
+        """Valida detecção e persistência automática de arquivo OAuth client_secret_*.json."""
+        oauth_json = b'{"web": {"client_id": "123456-abcdef.apps.googleusercontent.com", "client_secret": "GOCSPX-secret123", "redirect_uris": ["http://localhost:5173/settings"]}}'
+        with patch.object(BackupService, "resolve_backups_dir", return_value=Path(self.test_dir)):
+            with patch.object(BackupService, "_get_drive_client", return_value=(None, None, "Sem token", None)):
+                status, label = BackupService.save_credentials_file(oauth_json)
+                self.assertIn("123456-abcdef", label)
+                client_file = Path(self.test_dir) / "oauth_client.json"
+                self.assertTrue(client_file.is_file())
+
+    def test_get_oauth_auth_url_generation(self):
+        """Valida geração da URL do Google OAuth com scopes e parâmetros corretos."""
+        with patch.object(BackupService, "resolve_backups_dir", return_value=Path(self.test_dir)):
+            BackupService.save_oauth_client("test_client_id_999", "test_client_secret_888")
+            init_res = BackupService.get_oauth_auth_url("http://localhost:5173/settings")
+            self.assertIn("https://accounts.google.com/o/oauth2/v2/auth", init_res.auth_url)
+            self.assertIn("test_client_id_999", init_res.auth_url)
+            self.assertIn("http%3A%2F%2Flocalhost%3A5173%2Fsettings", init_res.auth_url)
+            self.assertIn("drive.file", init_res.auth_url)
+
 
 if __name__ == "__main__":
     unittest.main()
+

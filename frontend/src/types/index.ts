@@ -521,6 +521,9 @@ export interface GoogleDriveConfigStatus {
   is_configured: boolean;
   connection_ok: boolean;
   folder_id: string | null;
+  auth_type?: "oauth2" | "service_account" | null;
+  account_email?: string | null;
+  oauth_client_configured?: boolean;
   service_account_email: string | null;
   retention_days: number;
   status_message: string;
@@ -572,6 +575,35 @@ export interface BackupRestoreResponse {
   message: string;
   restored_at: string;
 }
+
+export interface GoogleDriveConfigUpdateRequest {
+  folder_id: string | null;
+  retention_days: number;
+}
+
+export interface GoogleOAuthInitRequest {
+  redirect_uri: string;
+  client_id?: string | null;
+  client_secret?: string | null;
+}
+
+export interface GoogleOAuthInitResponse {
+  auth_url: string;
+  redirect_uri: string;
+}
+
+export interface GoogleOAuthExchangeRequest {
+  code: string;
+  redirect_uri: string;
+  folder_id?: string | null;
+}
+
+export interface GoogleOAuthClientSaveRequest {
+  client_id: string;
+  client_secret: string;
+}
+
+
 
 
 

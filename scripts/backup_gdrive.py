@@ -29,19 +29,32 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 def get_drive_service():
     """Autentica com a API do Google Drive usando Service Account ou OAuth."""
-    creds_path = os.getenv(
-        "GOOGLE_APPLICATION_CREDENTIALS",
-        str(Path(__file__).resolve().parent.parent / "credentials.json"),
-    )
+    project_root = Path(__file__).resolve().parent.parent
+    candidate_paths = []
+    if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        candidate_paths.append(Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"]))
+    candidate_paths.extend([
+        project_root / "credentials.json",
+        project_root / "backups" / "credentials.json",
+        Path("credentials.json"),
+        Path("backups/credentials.json"),
+    ])
 
-    if not os.path.exists(creds_path):
+    resolved_path: Optional[Path] = None
+    for p in candidate_paths:
+        if p.is_file() and p.stat().st_size > 0:
+            resolved_path = p
+            break
+
+    if not resolved_path:
         raise FileNotFoundError(
-            f"Arquivo de credenciais do Google Drive não encontrado em: {creds_path}\n"
-            "Defina GOOGLE_APPLICATION_CREDENTIALS ou coloque credentials.json na raiz do projeto."
+            "Arquivo de credenciais do Google Drive não encontrado ou vazio.\n"
+            "Salve o arquivo em 'credentials.json' na raiz ou em 'backups/credentials.json', "
+            "ou defina a variável GOOGLE_APPLICATION_CREDENTIALS."
         )
 
     creds = service_account.Credentials.from_service_account_file(
-        creds_path, scopes=SCOPES
+        str(resolved_path), scopes=SCOPES
     )
     return build("drive", "v3", credentials=creds)
 
@@ -75,7 +88,12 @@ def upload_backup(file_path: str, folder_id: Optional[str] = None, retention_day
     )
 
     print(f"[*] Iniciando upload do backup '{filename}' ({path.stat().st_size / 1024 / 1024:.2f} MB)...")
-    request = service.files().create(body=file_metadata, media_body=media, fields="id, name, size")
+    request = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id, name, size",
+        supportsAllDrives=True,
+    )
     response = None
     while response is None:
         status, response = request.next_chunk()
@@ -108,6 +126,8 @@ def apply_retention_policy(service, folder_id: str, retention_days: int):
         spaces="drive",
         fields="files(id, name, createdTime)",
         pageSize=100,
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
     ).execute()
 
     files_to_delete = results.get("files", [])
@@ -115,7 +135,7 @@ def apply_retention_policy(service, folder_id: str, retention_days: int):
         print(f"[*] Aplicando retenção de {retention_days} dias: {len(files_to_delete)} backup(s) antigo(s) para purga...")
         for f in files_to_delete:
             print(f"    - Removendo {f['name']} (criado em {f['createdTime']})...")
-            service.files().delete(fileId=f["id"]).execute()
+            service.files().delete(fileId=f["id"], supportsAllDrives=True).execute()
         print("[+] Limpeza de retenção concluída.")
     else:
         print(f"[i] Nenhum backup anterior a {retention_days} dias precisa ser removido.")
@@ -136,6 +156,8 @@ def list_backups(folder_id: Optional[str] = None):
         fields="files(id, name, size, createdTime)",
         orderBy="createdTime desc",
         pageSize=30,
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
     ).execute()
 
     files = results.get("files", [])
@@ -156,7 +178,7 @@ def list_backups(folder_id: Optional[str] = None):
 def download_backup(file_id: str, output_path: str):
     """Baixa um backup do Google Drive para restauração."""
     service = get_drive_service()
-    request = service.files().get_media(fileId=file_id)
+    request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)

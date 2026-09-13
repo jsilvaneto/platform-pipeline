@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     BACKUP_RETENTION_DAYS: int = 30
     GOOGLE_APPLICATION_CREDENTIALS: str | None = None
     GOOGLE_DRIVE_FOLDER_ID: str | None = None
+    GOOGLE_OAUTH_CLIENT_ID: str | None = None
+    GOOGLE_OAUTH_CLIENT_SECRET: str | None = None
 
     def get_database_url(self) -> str:
         """Retorna a URL assíncrona do PostgreSQL para o SQLAlchemy (asyncpg)."""
@@ -76,13 +78,16 @@ class Settings(BaseSettings):
         # Candidatos padrão em ambientes container e local
         candidate_paths.extend([
             Path("/app/credentials.json"),
+            Path("/app/backups/credentials.json"),
+            Path(__file__).resolve().parents[3] / "backups" / "credentials.json",
+            Path(__file__).resolve().parents[3] / "credentials.json",
             Path(__file__).resolve().parents[2] / "credentials.json",  # backend/credentials.json
-            Path(__file__).resolve().parents[3] / "credentials.json",  # project_root/credentials.json
+            Path("backups/credentials.json"),
             Path("credentials.json"),
         ])
 
         for path in candidate_paths:
-            if path.is_file():
+            if path.is_file() and path.stat().st_size > 0:
                 return path
         return None
 

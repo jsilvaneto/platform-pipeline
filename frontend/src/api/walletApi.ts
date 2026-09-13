@@ -35,6 +35,11 @@ import {
   BackupCreateResponse,
   BackupRestoreRequest,
   BackupRestoreResponse,
+  GoogleDriveConfigUpdateRequest,
+  GoogleOAuthInitRequest,
+  GoogleOAuthInitResponse,
+  GoogleOAuthExchangeRequest,
+  GoogleOAuthClientSaveRequest,
   CalendarMonthResponse,
 } from "../types";
 
@@ -284,6 +289,47 @@ export const walletApi = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(blobUrl);
+  },
+
+  async updateGoogleDriveConfig(input: GoogleDriveConfigUpdateRequest): Promise<BackupStatusResponse> {
+    const { data } = await api.put<BackupStatusResponse>("/backups/config/gdrive", input);
+    return data;
+  },
+
+  async uploadGoogleDriveCredentials(file: File): Promise<BackupStatusResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post<BackupStatusResponse>("/backups/config/credentials", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return data;
+  },
+
+  async testGoogleDriveConnection(): Promise<BackupStatusResponse> {
+    const { data } = await api.post<BackupStatusResponse>("/backups/config/test");
+    return data;
+  },
+
+  async disconnectGoogleDrive(): Promise<BackupStatusResponse> {
+    const { data } = await api.delete<BackupStatusResponse>("/backups/config/gdrive");
+    return data;
+  },
+
+  async getGoogleOAuthUrl(input: GoogleOAuthInitRequest): Promise<GoogleOAuthInitResponse> {
+    const { data } = await api.post<GoogleOAuthInitResponse>("/backups/oauth2/init", input);
+    return data;
+  },
+
+  async exchangeGoogleOAuthCode(input: GoogleOAuthExchangeRequest): Promise<BackupStatusResponse> {
+    const { data } = await api.post<BackupStatusResponse>("/backups/oauth2/exchange", input);
+    return data;
+  },
+
+  async saveGoogleOAuthClient(input: GoogleOAuthClientSaveRequest): Promise<BackupStatusResponse> {
+    const { data } = await api.post<BackupStatusResponse>("/backups/oauth2/client", input);
+    return data;
   },
 };
 

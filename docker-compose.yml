@@ -44,6 +44,7 @@ services:
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
     volumes:
       - ./backups:/app/backups
+      - ./credentials.json:/app/credentials.json:ro
     depends_on:
       postgres:
         condition: service_healthy
