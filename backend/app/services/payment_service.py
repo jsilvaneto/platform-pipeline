@@ -47,12 +47,19 @@ async def update_payment_status(
         all_completed = all(p.status == "CONCLUIDO" for p in all_payments)
         all_cancelled = all(p.status == "CANCELADO" for p in all_payments)
 
-        if all_completed:
-            payment.expense.status = "CONCLUIDO"
-        elif all_cancelled:
-            payment.expense.status = "CANCELADO"
+        if payment.expense and payment.expense.is_recurring:
+            # Despesa fixa mensal contínua: permanece PENDENTE (ativa) enquanto não for explicitamente cancelada
+            if all_cancelled:
+                payment.expense.status = "CANCELADO"
+            else:
+                payment.expense.status = "PENDENTE"
         else:
-            payment.expense.status = "PENDENTE"
+            if all_completed:
+                payment.expense.status = "CONCLUIDO"
+            elif all_cancelled:
+                payment.expense.status = "CANCELADO"
+            else:
+                payment.expense.status = "PENDENTE"
 
     await db.commit()
     await db.refresh(payment)

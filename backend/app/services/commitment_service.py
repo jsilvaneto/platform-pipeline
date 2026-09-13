@@ -23,11 +23,11 @@ MONTH_ABBRS: list[str] = [
 
 async def get_commitments_summary(db: AsyncSession, user_id: str) -> CommitmentsSummary:
     """Consolida compromissos recorrentes e parcelamentos ativos com projeção de desoneração."""
-    # 1. Garante que despesas recorrentes possuam o horizonte de 12 meses gerado
-    await ensure_recurring_horizon(db, user_id)
-
     today = date.today()
     today_str = today.isoformat()
+
+    # 1. Garante que despesas recorrentes possuam o horizonte de 12 meses gerado (ano atual + próximo ano)
+    await ensure_recurring_horizon(db, user_id, target_year=today.year + 1)
 
     # 2. Busca todas as despesas do usuário com seus relacionamentos
     query = (

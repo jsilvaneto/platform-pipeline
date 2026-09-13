@@ -100,11 +100,15 @@ async def create_expense(db: AsyncSession, user_id: str, data: ExpenseCreate) ->
     now_iso = datetime.now(timezone.utc).isoformat()
 
     if data.is_recurring:
-        # Despesa fixa mensal contínua: projeta 12 ocorrências (horizonte de 1 ano)
-        # Cada ocorrência tem o valor mensal integral informado em data.total_amount_cents
-        count = 12
-        expense.installments_count = count
-        for idx in range(count):
+        # Despesa fixa mensal contínua:
+        # Gera pagamentos para o ano civil da data de vencimento informada (do mês de início até Dezembro)
+        # O valor mensal integral de cada parcela é data.total_amount_cents
+        start_year = start_due.year
+        start_month = start_due.month
+        months_in_year = 12 - start_month + 1
+
+        expense.installments_count = months_in_year
+        for idx in range(months_in_year):
             installment_num = idx + 1
             inst_amount = data.total_amount_cents
             inst_due = _add_months(start_due, idx).isoformat()
@@ -153,6 +157,7 @@ async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expens
     """Busca uma despesa com seus pagamentos e relacionamentos garantindo isolamento por usuário."""
     query = (
         select(Expense)
+        .execution_options(populate_existing=True)
         .options(
             selectinload(Expense.category),
             selectinload(Expense.item).selectinload(Item.category),
@@ -171,10 +176,22 @@ async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expens
         )
     return expense
 
-async def ensure_recurring_horizon(db: AsyncSession, user_id: str) -> None:
-    """Garante que despesas recorrentes ativas tenham o horizonte de 12 meses preenchido."""
+async def ensure_recurring_horizon(
+    db: AsyncSession,
+    user_id: str,
+    target_year: int | None = None,
+) -> None:
+    """
+    Garante que despesas fixas recorrentes ativas tenham pagamentos gerados
+    para o ano atual e para o ano de referência solicitado (virada de ano automática contínua).
+    """
+    today = date.today()
+    current_year = today.year
+    horizon_year = max(current_year, target_year) if target_year else current_year
+
     query = (
         select(Expense)
+        .execution_options(populate_existing=True)
         .options(selectinload(Expense.payments))
         .where(
             Expense.user_id == user_id,
@@ -185,25 +202,55 @@ async def ensure_recurring_horizon(db: AsyncSession, user_id: str) -> None:
     result = await db.execute(query)
     recurring_expenses = result.scalars().all()
     updated = False
+
     for exp in recurring_expenses:
-        existing = sorted(exp.payments, key=lambda p: p.installment_number)
-        if len(existing) < 12:
+        if not exp.due_date:
+            continue
+        try:
             start_due = date.fromisoformat(exp.due_date)
-            for idx in range(len(existing), 12):
-                inst_num = idx + 1
-                inst_due = _add_months(start_due, idx).isoformat()
-                payment = Payment(
-                    user_id=user_id,
-                    expense_id=exp.id,
-                    installment_number=inst_num,
-                    amount_cents=exp.total_amount_cents,
-                    due_date=inst_due,
-                    paid_at=None,
-                    status="PENDENTE",
-                )
-                db.add(payment)
-            exp.installments_count = 12
+        except ValueError:
+            continue
+
+        start_year = start_due.year
+        start_month = start_due.month
+
+        # Mapeia competências (YYYY-MM) já geradas para evitar duplicações
+        existing_payments = exp.payments
+        existing_months = {p.due_date[:7] for p in existing_payments if p.due_date}
+        max_inst_num = max([p.installment_number for p in existing_payments], default=0)
+
+        # Gera pagamentos faltantes desde start_year até horizon_year
+        for year in range(start_year, horizon_year + 1):
+            m_start = start_month if year == start_year else 1
+            m_end = 12
+
+            for m in range(m_start, m_end + 1):
+                month_key = f"{year:04d}-{m:02d}"
+                if month_key not in existing_months:
+                    # Calcula data de vencimento preservando o dia original
+                    months_diff = (year - start_year) * 12 + (m - start_month)
+                    due_date_calc = _add_months(start_due, months_diff).isoformat()
+
+                    max_inst_num += 1
+                    payment = Payment(
+                        user_id=user_id,
+                        expense_id=exp.id,
+                        installment_number=max_inst_num,
+                        amount_cents=exp.total_amount_cents,
+                        due_date=due_date_calc,
+                        paid_at=None,
+                        status="PENDENTE",
+                    )
+                    db.add(payment)
+                    exp.payments.append(payment)
+                    existing_months.add(month_key)
+                    updated = True
+
+        total_generated = len(existing_months)
+        if exp.installments_count != total_generated:
+            exp.installments_count = total_generated
             updated = True
+
     if updated:
         await db.commit()
 
@@ -215,7 +262,14 @@ async def list_expenses(
     page_size: int | None = None,
 ) -> tuple[Sequence[Expense], int]:
     """Lista despesas do usuário com filtros opcionais por mês, status, categoria, item ou essencialidade."""
-    await ensure_recurring_horizon(db, user_id)
+    target_year = None
+    if filter_params.month:
+        try:
+            target_year = int(filter_params.month.split("-")[0])
+        except (ValueError, IndexError):
+            pass
+
+    await ensure_recurring_horizon(db, user_id, target_year=target_year)
 
     query = (
         select(Expense)

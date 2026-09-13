@@ -70,8 +70,8 @@ async def test_recurring_expense_12_months_and_commitments_summary():
                 ),
             )
 
-            # Deve gerar exatamente 12 pagamentos, cada um de R$ 120,00
-            assert len(rec_expense.payments) == 12
+            # Deve gerar os pagamentos para o ano civil da data de vencimento (Setembro a Dezembro = 4 meses)
+            assert len(rec_expense.payments) == 4
             for p in rec_expense.payments:
                 assert p.amount_cents == 12000
                 assert p.status == "PENDENTE"
@@ -154,4 +154,3 @@ async def test_recurring_expense_12_months_and_commitments_summary():
             await session.execute(Contact.__table__.delete().where(Contact.user_id == user_id))
             await session.execute(User.__table__.delete().where(User.id == user_id))
             await session.commit()
-            await engine.dispose()

@@ -285,7 +285,7 @@ export const ExpenseCreateModal: React.FC<ExpenseCreateModalProps> = ({
                   <span>Recorrência Mensal Contínua</span>
                 </div>
                 <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80">
-                  O valor mensal informado será projetado automaticamente para os próximos 12 meses, integrando-se aos relatórios e ao menu de Compromissos.
+                  Despesa fixa contínua sem término (ex: aluguel, condomínio, luz, assinaturas). Os pagamentos são gerados para o ano atual e renovados automaticamente a cada virada de ano.
                 </p>
               </div>
             ) : (

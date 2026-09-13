@@ -39,6 +39,22 @@ export const ExpenseInstallmentsTable: React.FC<ExpenseInstallmentsTableProps> =
     return true;
   });
 
+  const formatCompetence = (dueDateStr: string): string => {
+    const parts = dueDateStr.split("-");
+    if (parts.length >= 2) {
+      const year = parts[0];
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      const monthNames = [
+        "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+        "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+      ];
+      if (monthIndex >= 0 && monthIndex < 12) {
+        return `${monthNames[monthIndex]}/${year}`;
+      }
+    }
+    return dueDateStr;
+  };
+
   return (
     <div className="bg-zinc-50/80 dark:bg-zinc-950/50 border-t border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 py-3.5 space-y-3">
       {/* Header com Resumo de Quitação e Filtros */}
@@ -46,27 +62,49 @@ export const ExpenseInstallmentsTable: React.FC<ExpenseInstallmentsTableProps> =
         <div className="space-y-1.5">
           <div className="flex items-center space-x-2">
             <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-              {isRecurring ? "Detalhamento da Recorrência (12 Meses)" : "Detalhamento de Parcelas"}
+              {isRecurring ? "Histórico & Previsão da Despesa Fixa" : "Detalhamento de Parcelas"}
             </span>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-              {paidCount} de {totalCount} {isRecurring ? "meses pagos" : "pagas"} ({progressPercent}%)
+              {isRecurring
+                ? `${paidCount} de ${totalCount} meses pagos (${progressPercent}%)`
+                : `${paidCount} de ${totalCount} pagas (${progressPercent}%)`}
             </span>
           </div>
 
           <div className="flex items-center space-x-3 text-xs text-zinc-500 dark:text-zinc-400">
-            <span>
-              Pago:{" "}
-              <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                {formatCurrency(paidAmountCents)}
-              </strong>
-            </span>
-            <span>•</span>
-            <span>
-              Restante:{" "}
-              <strong className="text-zinc-700 dark:text-zinc-300 font-semibold">
-                {formatCurrency(remainingAmountCents)}
-              </strong>
-            </span>
+            {isRecurring ? (
+              <>
+                <span>
+                  Mensalidade:{" "}
+                  <strong className="text-blue-600 dark:text-blue-400 font-semibold">
+                    {formatCurrency(expense.total_amount_cents)}/mês
+                  </strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Total Pago no Período:{" "}
+                  <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {formatCurrency(paidAmountCents)}
+                  </strong>
+                </span>
+              </>
+            ) : (
+              <>
+                <span>
+                  Pago:{" "}
+                  <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {formatCurrency(paidAmountCents)}
+                  </strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Restante:{" "}
+                  <strong className="text-zinc-700 dark:text-zinc-300 font-semibold">
+                    {formatCurrency(remainingAmountCents)}
+                  </strong>
+                </span>
+              </>
+            )}
           </div>
 
           {/* Barra de Progresso visual */}
@@ -152,8 +190,18 @@ export const ExpenseInstallmentsTable: React.FC<ExpenseInstallmentsTableProps> =
                     className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors"
                   >
                     <td className="py-2.5 px-4 font-semibold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
-                      Parcela {String(p.installment_number).padStart(2, "0")}/
-                      {String(totalCount).padStart(2, "0")}
+                      {isRecurring ? (
+                        <span className="flex items-center space-x-1.5">
+                          <span className="text-blue-600 dark:text-blue-400 font-bold">
+                            {formatCompetence(p.due_date)}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-normal">
+                            (Mês {String(p.installment_number).padStart(2, "0")})
+                          </span>
+                        </span>
+                      ) : (
+                        `Parcela ${String(p.installment_number).padStart(2, "0")}/${String(totalCount).padStart(2, "0")}`
+                      )}
                     </td>
 
                     <td className="py-2.5 px-4 whitespace-nowrap">

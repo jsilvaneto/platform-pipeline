@@ -13,6 +13,7 @@ from app.schemas.dashboard import (
     EssentialitySpending,
     UpcomingPayment,
 )
+from app.services.expense_service import ensure_recurring_horizon
 
 MONTH_NAMES: list[str] = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -37,6 +38,9 @@ async def get_dashboard_metrics(
         target_year = year if year is not None else today.year
         period = str(target_year)
         prefix_filter = f"{target_year}-"
+
+    # Garante que as despesas fixas recorrentes tenham os pagamentos gerados para o ano do dashboard
+    await ensure_recurring_horizon(db, user_id, target_year=target_year)
 
     # Busca todas as parcelas do usuário no período com dados da despesa, categoria e item
     query = (
