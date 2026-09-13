@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/expenses", tags=["Despesas Pessoais"])
 
 @router.get("/", response_model=list[ExpenseResponse])
 async def list_expenses(
+    response: Response,
     month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$", description="Filtrar por mês de competência (YYYY-MM)"),
     status_filter: ExpenseStatus | None = Query(default=None, alias="status", description="Filtrar por status"),
     category_id: str | None = Query(default=None, description="Filtrar por ID da categoria"),
@@ -26,10 +27,12 @@ async def list_expenses(
     contact_id: str | None = Query(default=None, description="Filtrar por ID do contato"),
     payment_method_id: str | None = Query(default=None, description="Filtrar por forma de pagamento"),
     essentiality: EssentialityType | None = Query(default=None, description="Filtrar por essencialidade"),
+    page: int | None = Query(default=None, ge=1, description="Número da página (1-based)"),
+    page_size: int | None = Query(default=None, ge=1, le=100, description="Quantidade de registros por página"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Sequence[ExpenseResponse]:
-    """Lista despesas pessoais com filtros avançados."""
+    """Lista despesas pessoais com filtros avançados e paginação."""
     filters = ExpenseFilter(
         month=month,
         status=status_filter,
@@ -39,7 +42,20 @@ async def list_expenses(
         payment_method_id=payment_method_id,
         essentiality=essentiality,
     )
-    return await expense_service.list_expenses(db, current_user.id, filters)
+    items, total_count = await expense_service.list_expenses(
+        db, current_user.id, filters, page=page, page_size=page_size
+    )
+
+    current_page = page or 1
+    current_size = page_size or (len(items) if len(items) > 0 else 1)
+    total_pages = max(1, (total_count + current_size - 1) // current_size) if total_count > 0 else 1
+
+    response.headers["X-Total-Count"] = str(total_count)
+    response.headers["X-Page"] = str(current_page)
+    response.headers["X-Page-Size"] = str(current_size)
+    response.headers["X-Total-Pages"] = str(total_pages)
+
+    return items
 
 @router.post("/", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense(

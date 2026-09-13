@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "wallet"
     DATABASE_URL: str | None = None
 
+    # Configurações de Backup & Google Drive
+    BACKUPS_DIR: str = "backups"
+    BACKUP_RETENTION_DAYS: int = 30
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = None
+    GOOGLE_DRIVE_FOLDER_ID: str | None = None
+
     def get_database_url(self) -> str:
         """Retorna a URL assíncrona do PostgreSQL para o SQLAlchemy (asyncpg)."""
         if self.DATABASE_URL:
@@ -60,5 +66,35 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
+
+    def resolve_credentials_path(self) -> Path | None:
+        """Resolve o caminho do arquivo de credenciais do Google Drive."""
+        candidate_paths: list[Path] = []
+        if self.GOOGLE_APPLICATION_CREDENTIALS:
+            candidate_paths.append(Path(self.GOOGLE_APPLICATION_CREDENTIALS))
+        
+        # Candidatos padrão em ambientes container e local
+        candidate_paths.extend([
+            Path("/app/credentials.json"),
+            Path(__file__).resolve().parents[2] / "credentials.json",  # backend/credentials.json
+            Path(__file__).resolve().parents[3] / "credentials.json",  # project_root/credentials.json
+            Path("credentials.json"),
+        ])
+
+        for path in candidate_paths:
+            if path.is_file():
+                return path
+        return None
+
+    def resolve_backups_dir(self) -> Path:
+        """Resolve o diretório local para armazenamento de backups."""
+        # Se estiver em container (/app existe)
+        if Path("/app").is_dir():
+            backup_dir = Path("/app/backups")
+        else:
+            backup_dir = Path(__file__).resolve().parents[3] / self.BACKUPS_DIR
+        
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        return backup_dir
 
 settings = Settings()

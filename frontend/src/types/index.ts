@@ -242,6 +242,16 @@ export interface ExpenseFilterParams {
   contact_id?: string;
   payment_method_id?: string;
   essentiality?: EssentialityType;
+  page?: number;
+  page_size?: number;
+}
+
+export interface PaginatedExpenses {
+  items: Expense[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface CategorySpending {
@@ -431,6 +441,66 @@ export interface CommitmentsSummary {
   installment_commitments: InstallmentCommitmentItem[];
   monthly_projection: MonthlyCommitmentProjection[];
 }
+
+// Tipos de Backup e Google Drive
+export type BackupSource = "gdrive" | "local";
+
+export interface GoogleDriveConfigStatus {
+  is_configured: boolean;
+  connection_ok: boolean;
+  folder_id: string | null;
+  service_account_email: string | null;
+  retention_days: number;
+  status_message: string;
+}
+
+export interface BackupItem {
+  id: string;
+  filename: string;
+  size_bytes: number;
+  size_pretty: string;
+  created_at: string;
+  source: BackupSource;
+  drive_file_id?: string | null;
+}
+
+export interface BackupListResponse {
+  items: BackupItem[];
+  total: number;
+  google_drive_connected: boolean;
+}
+
+export interface BackupStatusResponse {
+  google_drive: GoogleDriveConfigStatus;
+  local_backups_count: number;
+  drive_backups_count: number;
+  total_disk_usage_pretty: string;
+  last_backup_at?: string | null;
+}
+
+export interface BackupCreateResponse {
+  success: boolean;
+  filename: string;
+  size_bytes: number;
+  size_pretty: string;
+  created_at: string;
+  uploaded_to_gdrive: boolean;
+  drive_file_id?: string | null;
+  message: string;
+}
+
+export interface BackupRestoreRequest {
+  backup_id: string;
+  source: BackupSource;
+  confirmation_token: string;
+}
+
+export interface BackupRestoreResponse {
+  success: boolean;
+  message: string;
+  restored_at: string;
+}
+
 
 
 

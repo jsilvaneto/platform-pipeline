@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import uuid
-from sqlalchemy import String, Integer, Boolean, Text, ForeignKey, CheckConstraint
+from sqlalchemy import String, Integer, Boolean, Text, ForeignKey, CheckConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -16,6 +16,8 @@ class Expense(Base):
             "essentiality IN ('OBRIGATORIO', 'NECESSARIO', 'DESEJO', 'NENHUM')",
             name="chk_expense_essentiality"
         ),
+        Index("idx_expenses_user_due", "user_id", "due_date"),
+        Index("idx_expenses_user_status_due", "user_id", "status", "due_date"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

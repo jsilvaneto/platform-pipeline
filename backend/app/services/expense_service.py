@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, date
 from collections.abc import Sequence
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -208,8 +208,12 @@ async def ensure_recurring_horizon(db: AsyncSession, user_id: str) -> None:
         await db.commit()
 
 async def list_expenses(
-    db: AsyncSession, user_id: str, filter_params: ExpenseFilter
-) -> Sequence[Expense]:
+    db: AsyncSession,
+    user_id: str,
+    filter_params: ExpenseFilter,
+    page: int | None = None,
+    page_size: int | None = None,
+) -> tuple[Sequence[Expense], int]:
     """Lista despesas do usuário com filtros opcionais por mês, status, categoria, item ou essencialidade."""
     await ensure_recurring_horizon(db, user_id)
 
@@ -225,33 +229,52 @@ async def list_expenses(
         .where(Expense.user_id == user_id)
     )
 
+    count_query = (
+        select(func.count(distinct(Expense.id)))
+        .select_from(Expense)
+        .where(Expense.user_id == user_id)
+    )
+
     if filter_params.month:
-        # Inclui despesa se a data principal ou alguma das parcelas tiver vencimento no mês informado (YYYY-MM)
-        query = query.where(
-            Expense.payments.any(Payment.due_date.startswith(filter_params.month))
-        )
+        month_cond = Expense.payments.any(Payment.due_date.startswith(filter_params.month))
+        query = query.where(month_cond)
+        count_query = count_query.where(month_cond)
 
     if filter_params.status:
         query = query.where(Expense.status == filter_params.status)
+        count_query = count_query.where(Expense.status == filter_params.status)
 
     if filter_params.category_id:
         query = query.where(Expense.category_id == filter_params.category_id)
+        count_query = count_query.where(Expense.category_id == filter_params.category_id)
 
     if filter_params.item_id:
         query = query.where(Expense.item_id == filter_params.item_id)
+        count_query = count_query.where(Expense.item_id == filter_params.item_id)
 
     if filter_params.contact_id:
         query = query.where(Expense.contact_id == filter_params.contact_id)
+        count_query = count_query.where(Expense.contact_id == filter_params.contact_id)
 
     if filter_params.payment_method_id:
         query = query.where(Expense.payment_method_id == filter_params.payment_method_id)
+        count_query = count_query.where(Expense.payment_method_id == filter_params.payment_method_id)
 
     if filter_params.essentiality:
         query = query.where(Expense.essentiality == filter_params.essentiality)
+        count_query = count_query.where(Expense.essentiality == filter_params.essentiality)
+
+    total_count = await db.scalar(count_query) or 0
 
     query = query.order_by(Expense.due_date.desc(), Expense.created_at.desc())
+
+    if page is not None and page_size is not None:
+        offset_val = (page - 1) * page_size
+        query = query.offset(offset_val).limit(page_size)
+
     result = await db.execute(query)
-    return result.scalars().all()
+    items = result.scalars().all()
+    return items, total_count
 
 async def update_expense(
     db: AsyncSession, user_id: str, expense_id: str, data: ExpenseUpdate

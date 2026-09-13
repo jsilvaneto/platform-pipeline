@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import uuid
-from sqlalchemy import String, Integer, ForeignKey, CheckConstraint
+from sqlalchemy import String, Integer, ForeignKey, CheckConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -12,6 +12,9 @@ class Payment(Base):
             "status IN ('PENDENTE', 'CONCLUIDO', 'CANCELADO')",
             name="chk_payment_status"
         ),
+        Index("idx_payments_user_due", "user_id", "due_date"),
+        Index("idx_payments_user_status_due", "user_id", "status", "due_date"),
+        Index("idx_payments_expense_status", "expense_id", "status"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

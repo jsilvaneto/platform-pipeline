@@ -17,6 +17,7 @@ import {
   ExpenseCreateInput,
   ExpenseUpdateInput,
   ExpenseFilterParams,
+  PaginatedExpenses,
   Payment,
   PaymentStatusUpdateInput,
   PaymentUpdateInput,
@@ -28,6 +29,12 @@ import {
   VersionRelease,
   SystemVersionResponse,
   CommitmentsSummary,
+  BackupSource,
+  BackupStatusResponse,
+  BackupListResponse,
+  BackupCreateResponse,
+  BackupRestoreRequest,
+  BackupRestoreResponse,
 } from "../types";
 
 
@@ -133,6 +140,21 @@ export const walletApi = {
     return data;
   },
 
+  async getPaginatedExpenses(params?: ExpenseFilterParams): Promise<PaginatedExpenses> {
+    const response = await api.get<Expense[]>("/expenses/", { params });
+    const total = Number(response.headers["x-total-count"] || response.data.length);
+    const page = Number(response.headers["x-page"] || params?.page || 1);
+    const pageSize = Number(response.headers["x-page-size"] || params?.page_size || response.data.length || 10);
+    const totalPages = Number(response.headers["x-total-pages"] || Math.ceil(total / (pageSize || 1)) || 1);
+    return {
+      items: response.data,
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
+  },
+
   async getExpense(id: string): Promise<Expense> {
     const { data } = await api.get<Expense>(`/expenses/${id}`);
     return data;
@@ -217,6 +239,42 @@ export const walletApi = {
   async toggleRecurringCommitment(expenseId: string): Promise<Expense> {
     const { data } = await api.patch<Expense>(`/commitments/${expenseId}/toggle-status`);
     return data;
+  },
+
+  // Gestão de Backups & Google Drive
+  async getBackupStatus(): Promise<BackupStatusResponse> {
+    const { data } = await api.get<BackupStatusResponse>("/backups/status");
+    return data;
+  },
+
+  async getBackups(): Promise<BackupListResponse> {
+    const { data } = await api.get<BackupListResponse>("/backups/");
+    return data;
+  },
+
+  async createBackup(): Promise<BackupCreateResponse> {
+    const { data } = await api.post<BackupCreateResponse>("/backups/create");
+    return data;
+  },
+
+  async restoreBackup(input: BackupRestoreRequest): Promise<BackupRestoreResponse> {
+    const { data } = await api.post<BackupRestoreResponse>("/backups/restore", input);
+    return data;
+  },
+
+  async downloadBackup(backupId: string, source: BackupSource, filename: string): Promise<void> {
+    const response = await api.get(`/backups/${backupId}/download`, {
+      params: { source },
+      responseType: "blob",
+    });
+    const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(blobUrl);
   },
 };
 

@@ -13,6 +13,9 @@ node_modules/
 !.env.example
 *.pem
 *.key
+credentials*.json
+backups/
+*.dump
 
 # Banco de Dados Local (SQLite)
 *.db

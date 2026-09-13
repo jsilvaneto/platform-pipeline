@@ -10,6 +10,7 @@ from app.api.v1.payments import router as payments_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.commitments import router as commitments_router
 from app.api.v1.system import router as system_router
+from app.api.v1.backups import router as backups_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -24,5 +25,6 @@ api_router.include_router(payments_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(commitments_router)
 api_router.include_router(system_router)
+api_router.include_router(backups_router)
 
 
