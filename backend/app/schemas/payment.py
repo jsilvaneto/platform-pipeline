@@ -1,5 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict
+from app.schemas.attachment import AttachmentResponse
 
 PaymentStatus = Literal["PENDENTE", "CONCLUIDO", "CANCELADO"]
 
@@ -24,5 +25,6 @@ class PaymentResponse(PaymentBase):
     expense_id: str
     created_at: str
     updated_at: str
+    attachments: list[AttachmentResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

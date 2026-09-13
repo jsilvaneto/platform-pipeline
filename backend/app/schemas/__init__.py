@@ -6,6 +6,18 @@ from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodUpdate,
 from app.schemas.payment import PaymentResponse, PaymentStatusUpdate
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseFilter
 from app.schemas.dashboard import DashboardMetrics, CategorySpending, ItemSpending, EssentialitySpending, UpcomingPayment
+from app.schemas.attachment import (
+    AttachmentCategory,
+    AttachmentBase,
+    AttachmentResponse,
+    AttachmentListResponse,
+)
+from app.schemas.storage import (
+    DirectoryHealth,
+    StorageSuggestion,
+    StorageConfigResponse,
+    StorageConfigUpdate,
+)
 
 __all__ = [
     "UserCreate",
@@ -38,4 +50,12 @@ __all__ = [
     "ItemSpending",
     "EssentialitySpending",
     "UpcomingPayment",
+    "AttachmentCategory",
+    "AttachmentBase",
+    "AttachmentResponse",
+    "AttachmentListResponse",
+    "DirectoryHealth",
+    "StorageSuggestion",
+    "StorageConfigResponse",
+    "StorageConfigUpdate",
 ]

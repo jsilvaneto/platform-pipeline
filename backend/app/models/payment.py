@@ -36,3 +36,4 @@ class Payment(Base):
     )
 
     expense = relationship("Expense", back_populates="payments", lazy="selectin")
+    attachments = relationship("Attachment", back_populates="payment", cascade="all, delete-orphan", lazy="selectin")

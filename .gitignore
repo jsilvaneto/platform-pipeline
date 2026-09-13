@@ -15,6 +15,9 @@ node_modules/
 *.key
 credentials*.json
 backups/
+storage/
+!storage/**/.gitkeep
+storage_config.json
 *.dump
 
 # Banco de Dados Local (SQLite)

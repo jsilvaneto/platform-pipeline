@@ -53,3 +53,4 @@ class Expense(Base):
     contact = relationship("Contact", back_populates="expenses", lazy="selectin")
     payment_method = relationship("PaymentMethod", lazy="selectin")
     payments = relationship("Payment", back_populates="expense", cascade="all, delete-orphan", lazy="selectin", order_by="Payment.installment_number")
+    attachments = relationship("Attachment", back_populates="expense", cascade="all, delete-orphan", lazy="selectin")

@@ -1,7 +1,8 @@
-import React from "react";
-import { CheckCircle2, Edit2 } from "lucide-react";
+import React, { useState } from "react";
+import { CheckCircle2, Edit2, Receipt } from "lucide-react";
 import { Expense, Payment, ExpenseStatus } from "../../types";
 import { formatCurrency, formatDate } from "../../utils/format";
+import { AttachmentManagerModal } from "../attachments/AttachmentManagerModal";
 
 interface ExpenseInstallmentsTableProps {
   expense: Expense;
@@ -22,6 +23,7 @@ export const ExpenseInstallmentsTable: React.FC<ExpenseInstallmentsTableProps> =
   onTogglePaymentStatus,
   todayIsoDate,
 }) => {
+  const [selectedPaymentForAttachment, setSelectedPaymentForAttachment] = useState<Payment | null>(null);
   const sortedPayments = [...expense.payments].sort(
     (a, b) => a.installment_number - b.installment_number
   );
@@ -237,6 +239,22 @@ export const ExpenseInstallmentsTable: React.FC<ExpenseInstallmentsTableProps> =
                     <td className="py-2.5 px-4 text-right whitespace-nowrap space-x-1">
                       <button
                         type="button"
+                        onClick={() => setSelectedPaymentForAttachment(p)}
+                        className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer inline-flex items-center ${
+                          p.attachments && p.attachments.length > 0
+                            ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                            : "text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        }`}
+                        title={
+                          p.attachments && p.attachments.length > 0
+                            ? `Comprovante anexado (${p.attachments.length}) - clique para ver/gerenciar`
+                            : "Anexar comprovante de pagamento desta parcela"
+                        }
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => onEditPayment(expense, p)}
                         className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer inline-flex items-center"
                         title="Editar valor desta parcela"
@@ -274,6 +292,18 @@ export const ExpenseInstallmentsTable: React.FC<ExpenseInstallmentsTableProps> =
           </table>
         </div>
       </div>
+
+      {/* Modal de Gerenciamento de Anexos da Parcela */}
+      {selectedPaymentForAttachment && (
+        <AttachmentManagerModal
+          isOpen={true}
+          onClose={() => setSelectedPaymentForAttachment(null)}
+          title={`Comprovante - Parcela ${selectedPaymentForAttachment.installment_number} (${expense.description})`}
+          expenseId={expense.id}
+          paymentId={selectedPaymentForAttachment.id}
+          defaultCategory="COMPROVANTE_PAGAMENTO"
+        />
+      )}
     </div>
   );
 };

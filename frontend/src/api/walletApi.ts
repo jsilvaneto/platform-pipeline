@@ -41,6 +41,11 @@ import {
   GoogleOAuthExchangeRequest,
   GoogleOAuthClientSaveRequest,
   CalendarMonthResponse,
+  StorageConfigResponse,
+  StorageConfigUpdate,
+  AttachmentCategory,
+  Attachment,
+  AttachmentListResponse,
 } from "../types";
 
 
@@ -331,5 +336,72 @@ export const walletApi = {
     const { data } = await api.post<BackupStatusResponse>("/backups/oauth2/client", input);
     return data;
   },
+
+  // ----------------------------------------------------------------------
+  // Armazenamento & Diretórios Host (WSL / Windows)
+  // ----------------------------------------------------------------------
+
+  async getStorageConfig(): Promise<StorageConfigResponse> {
+    const { data } = await api.get<StorageConfigResponse>("/storage/config");
+    return data;
+  },
+
+  async updateStorageConfig(input: StorageConfigUpdate): Promise<StorageConfigResponse> {
+    const { data } = await api.post<StorageConfigResponse>("/storage/config", input);
+    return data;
+  },
+
+  // ----------------------------------------------------------------------
+  // Anexos & Comprovantes
+  // ----------------------------------------------------------------------
+
+  async uploadAttachment(params: {
+    file: File;
+    category?: AttachmentCategory;
+    expenseId?: string;
+    paymentId?: string;
+    notes?: string;
+  }): Promise<Attachment> {
+    const formData = new FormData();
+    formData.append("file", params.file);
+    if (params.category) formData.append("category", params.category);
+    if (params.expenseId) formData.append("expense_id", params.expenseId);
+    if (params.paymentId) formData.append("payment_id", params.paymentId);
+    if (params.notes) formData.append("notes", params.notes);
+
+    const { data } = await api.post<Attachment>("/attachments/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return data;
+  },
+
+  async listAttachments(params?: {
+    expense_id?: string;
+    payment_id?: string;
+    category?: AttachmentCategory;
+  }): Promise<AttachmentListResponse> {
+    const { data } = await api.get<AttachmentListResponse>("/attachments", {
+      params,
+    });
+    return data;
+  },
+
+  async deleteAttachment(attachmentId: string): Promise<{ message: string }> {
+    const { data } = await api.delete<{ message: string }>(`/attachments/${attachmentId}`);
+    return data;
+  },
+
+  getAttachmentPreviewUrl(attachmentId: string): string {
+    const baseUrl = api.defaults.baseURL || "/api/v1";
+    return `${baseUrl}/attachments/${attachmentId}/preview`;
+  },
+
+  getAttachmentDownloadUrl(attachmentId: string): string {
+    const baseUrl = api.defaults.baseURL || "/api/v1";
+    return `${baseUrl}/attachments/${attachmentId}/download`;
+  },
 };
+
 

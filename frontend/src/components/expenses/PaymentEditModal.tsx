@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Receipt } from "lucide-react";
 import { Modal } from "../Modal";
 import { Expense, Payment } from "../../types";
 import { formatDate } from "../../utils/format";
 import { walletApi } from "../../api/walletApi";
+import { AttachmentManagerModal } from "../attachments/AttachmentManagerModal";
 
 interface PaymentEditModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const PaymentEditModal: React.FC<PaymentEditModalProps> = ({
   const [amountStr, setAmountStr] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAttachmentOpen, setIsAttachmentOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen && selectedPayment) {
@@ -130,24 +132,47 @@ export const PaymentEditModal: React.FC<PaymentEditModalProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-end space-x-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center justify-between pt-3 border-t border-zinc-200 dark:border-zinc-800">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            onClick={() => setIsAttachmentOpen(true)}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 flex items-center space-x-1.5 transition-colors cursor-pointer"
+            title="Ver ou anexar comprovante desta parcela"
           >
-            Cancelar
+            <Receipt className="w-3.5 h-3.5" />
+            <span>Comprovantes ({selectedPayment?.attachments?.length || 0})</span>
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
-          >
-            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{isSubmitting ? "Salvando..." : "Salvar Parcela"}</span>
-          </button>
+
+          <div className="flex items-center space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
+            >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>{isSubmitting ? "Salvando..." : "Salvar Parcela"}</span>
+            </button>
+          </div>
         </div>
       </form>
+
+      {isAttachmentOpen && selectedPayment && (
+        <AttachmentManagerModal
+          isOpen={isAttachmentOpen}
+          onClose={() => setIsAttachmentOpen(false)}
+          title={`Comprovante - Parcela ${selectedPayment.installment_number} (${selectedExpense?.description})`}
+          expenseId={selectedExpense?.id}
+          paymentId={selectedPayment.id}
+          defaultCategory="COMPROVANTE_PAGAMENTO"
+        />
+      )}
     </Modal>
   );
 };

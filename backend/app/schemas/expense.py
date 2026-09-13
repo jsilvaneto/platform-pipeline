@@ -5,6 +5,7 @@ from app.schemas.item import ItemResponse
 from app.schemas.contact import ContactResponse
 from app.schemas.payment_method import PaymentMethodResponse
 from app.schemas.payment import PaymentResponse
+from app.schemas.attachment import AttachmentResponse
 
 ExpenseStatus = Literal["PENDENTE", "CONCLUIDO", "CANCELADO"]
 EssentialityType = Literal["OBRIGATORIO", "NECESSARIO", "DESEJO", "NENHUM"]
@@ -54,6 +55,7 @@ class ExpenseResponse(ExpenseBase):
     contact: ContactResponse | None = None
     payment_method: PaymentMethodResponse | None = None
     payments: list[PaymentResponse] = []
+    attachments: list[AttachmentResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 

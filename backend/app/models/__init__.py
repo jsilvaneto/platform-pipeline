@@ -5,6 +5,7 @@ from app.models.contact import Contact
 from app.models.payment_method import PaymentMethod
 from app.models.expense import Expense
 from app.models.payment import Payment
+from app.models.attachment import Attachment
 
 __all__ = [
     "User",
@@ -14,4 +15,5 @@ __all__ = [
     "PaymentMethod",
     "Expense",
     "Payment",
+    "Attachment",
 ]

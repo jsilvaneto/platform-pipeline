@@ -166,6 +166,7 @@ export interface Payment {
   status: ExpenseStatus;
   created_at: string;
   updated_at: string;
+  attachments?: Attachment[];
 }
 
 export interface PaymentStatusUpdateInput {
@@ -201,6 +202,7 @@ export interface Expense {
   contact?: Contact | null;
   payment_method?: PaymentMethod | null;
   payments: Payment[];
+  attachments?: Attachment[];
 }
 
 export interface ExpenseCreateInput {
@@ -602,6 +604,75 @@ export interface GoogleOAuthClientSaveRequest {
   client_id: string;
   client_secret: string;
 }
+
+// ----------------------------------------------------------------------
+// Armazenamento & Diretórios Host (WSL / Windows)
+// ----------------------------------------------------------------------
+
+export interface DirectoryHealth {
+  configured_path: string;
+  resolved_path: string;
+  exists: boolean;
+  is_writable: boolean;
+  free_space_bytes: number;
+  free_space_pretty: string;
+  total_space_bytes: number;
+  total_space_pretty: string;
+  files_count: number;
+  total_files_size_pretty: string;
+  error_message?: string | null;
+}
+
+export interface StorageSuggestion {
+  label: string;
+  backups_dir: string;
+  attachments_dir: string;
+}
+
+export interface StorageConfigResponse {
+  backups: DirectoryHealth;
+  attachments: DirectoryHealth;
+  backup_retention_days: number;
+  detected_suggestions: StorageSuggestion[];
+}
+
+export interface StorageConfigUpdate {
+  backups_dir: string;
+  attachments_dir: string;
+  backup_retention_days: number;
+}
+
+// ----------------------------------------------------------------------
+// Anexos & Categorização de Documentos
+// ----------------------------------------------------------------------
+
+export type AttachmentCategory =
+  | "COMPROVANTE_PAGAMENTO"
+  | "NOTA_FISCAL"
+  | "FATURA_BOLETO"
+  | "CONTRATO"
+  | "OUTRO";
+
+export interface Attachment {
+  id: string;
+  user_id: string;
+  expense_id?: string | null;
+  payment_id?: string | null;
+  category: AttachmentCategory;
+  original_filename: string;
+  content_type: string;
+  file_size_bytes: number;
+  file_size_pretty: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttachmentListResponse {
+  items: Attachment[];
+  total: number;
+}
+
 
 
 

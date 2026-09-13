@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Tag,
   Repeat,
@@ -9,10 +9,12 @@ import {
   ChevronUp,
   Edit2,
   Trash2,
+  Paperclip,
 } from "lucide-react";
 import { Expense, Payment, EssentialityType, ExpenseStatus } from "../../types";
 import { formatCurrency, formatDate } from "../../utils/format";
 import { ExpenseInstallmentsTable } from "./ExpenseInstallmentsTable";
+import { AttachmentManagerModal } from "../attachments/AttachmentManagerModal";
 
 export const ESSENTIALITY_LABELS: Record<EssentialityType, { label: string; color: string }> = {
   OBRIGATORIO: {
@@ -63,6 +65,7 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
   const isRecurring = expense.is_recurring;
   const isParcelado = expense.installments_count > 1 && !isRecurring;
   const essentialityCfg = ESSENTIALITY_LABELS[expense.essentiality];
+  const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState<boolean>(false);
 
   // Parcela relevante do mês selecionado
   const currentInstallment = expense.payments.find((p) =>
@@ -112,6 +115,21 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
                   Recorrente
                 </span>
               )}
+
+              {/* Tag / Botão Anexos */}
+              <button
+                type="button"
+                onClick={() => setIsAttachmentModalOpen(true)}
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 flex items-center space-x-1 cursor-pointer transition-colors"
+                title="Gerenciar comprovantes e anexos desta despesa"
+              >
+                <Paperclip className="w-2.5 h-2.5 text-zinc-500" />
+                <span>
+                  {expense.attachments && expense.attachments.length > 0
+                    ? `${expense.attachments.length} anexo(s)`
+                    : "Anexos"}
+                </span>
+              </button>
             </div>
 
             {/* Metadados: Contato, Categoria, Forma de Pagamento, Data */}
@@ -224,6 +242,16 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
             </button>
           )}
 
+          {/* Anexos e Comprovantes */}
+          <button
+            type="button"
+            onClick={() => setIsAttachmentModalOpen(true)}
+            className="p-1.5 text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+            title="Anexos e comprovantes"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+
           {/* Editar Despesa */}
           <button
             onClick={() => onOpenEditModal(expense)}
@@ -254,6 +282,17 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
           onEditPayment={onOpenEditPaymentModal}
           onTogglePaymentStatus={onTogglePaymentStatus}
           todayIsoDate={todayIsoDate}
+        />
+      )}
+
+      {/* Modal de Gerenciamento de Anexos */}
+      {isAttachmentModalOpen && (
+        <AttachmentManagerModal
+          isOpen={isAttachmentModalOpen}
+          onClose={() => setIsAttachmentModalOpen(false)}
+          title={`Anexos - ${expense.description}`}
+          expenseId={expense.id}
+          defaultCategory="NOTA_FISCAL"
         />
       )}
     </div>

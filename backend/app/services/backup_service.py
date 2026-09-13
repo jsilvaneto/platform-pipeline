@@ -9,6 +9,7 @@ from typing import Any, Literal
 import httpx
 
 from app.core.config import settings
+from app.services.storage_service import StorageService
 from app.schemas.backup import (
     BackupCreateResponse,
     BackupItem,
@@ -50,14 +51,8 @@ class BackupService:
 
     @classmethod
     def resolve_backups_dir(cls) -> Path:
-        """Resolve o diretório local para armazenamento de backups."""
-        if Path("/app").is_dir():
-            backup_dir = Path("/app/backups")
-        else:
-            backup_dir = Path(__file__).resolve().parents[3] / settings.BACKUPS_DIR
-
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        return backup_dir
+        """Resolve o diretório configurado de armazenamento de backups."""
+        return StorageService.get_backups_dir()
 
     @classmethod
     def _format_size(cls, size_bytes: int) -> str:

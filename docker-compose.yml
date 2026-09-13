@@ -43,6 +43,8 @@ services:
       - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-}
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
     volumes:
+      - /mnt:/mnt
+      - ./storage:/app/storage
       - ./backups:/app/backups
       - ./credentials.json:/app/credentials.json:ro
     depends_on:

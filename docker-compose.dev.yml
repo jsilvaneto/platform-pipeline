@@ -30,6 +30,8 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
+      - /mnt:/mnt
+      - ./storage:/app/storage
     environment:
       - PYTHONPATH=/app
       - SECRET_KEY=${SECRET_KEY:-dev_secret_key_1234567890_change_in_production}
