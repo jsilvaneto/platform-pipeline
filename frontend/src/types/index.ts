@@ -854,6 +854,58 @@ export interface FinancialOverviewResponse {
   last_sync_at?: string | null;
 }
 
+export interface WalletAccount {
+  id: string;
+  user_id: string;
+  name: string;
+  account_type: string;
+  currency_code: string;
+  initial_balance_cents: number;
+  current_balance_cents: number;
+  credit_balance_cents?: number | null;
+  credit_limit_cents?: number | null;
+  available_credit_cents?: number | null;
+  balance_mode?: string | null;
+  exclude_from_stats: boolean;
+  color: string;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WalletRecord {
+  id: string;
+  user_id: string;
+  account_id: string;
+  account_name: string;
+  category_id?: string | null;
+  category_name?: string | null;
+  category_color?: string | null;
+  category_icon?: string | null;
+  cardinality: string;
+  record_type: "RECEITA" | "DESPESA" | "TRANSFERENCIA";
+  amount_cents: number;
+  currency_code: string;
+  converted_amount_cents: number;
+  record_date: string;
+  record_state: "reconciled" | "cleared" | "uncleared" | "void" | "waitForAssign";
+  counter_party?: string | null;
+  note?: string | null;
+  source: string;
+  is_transfer: boolean;
+  transfer_id?: string | null;
+  labels: string[];
+}
+
+export interface PaginatedRecordsResponse {
+  items: WalletRecord[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+
 
 
 

@@ -7,6 +7,33 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [2.0.0] - 2026-09-22
+
+### 🚀 Integração Nativa BudgetBakers Wallet REST API & Motor Analítico Preditivo
+- **Integração Total com a Wallet API**: Conexão nativa e segura com os servidores BudgetBakers via REST API oficial.
+- **Segurança de Credenciais de Ponta a Ponta**: Criptografia AES-256 (Fernet) derivada da chave secreta mestre. A chave pessoal do usuário nunca é exposta em logs ou enviada ao frontend em texto claro (apenas máscara visual `wal_••••••••xxxx`).
+- **Cliente HTTP Defensivo e Resiliente**:
+  - Mecanismo anti-burst com taxa controlada (espaçamento de 250ms).
+  - Paginação em lotes de 200 itens (`limit=200`) para preservação da cota de 300 req/h.
+  - Interceptador de HTTP 429 com respeito ao header `Retry-After`.
+  - Tratamento semântico de HTTP 409 (`init_sync_in_progress`).
+  - Extração contínua de watermarks (`X-Last-Data-Change-Rev` e `X-Last-Data-Change-At`).
+- **Novo Modelo de Dados PostgreSQL**:
+  - Modelos SQLAlchemy 2.0 para `accounts`, `categories` (com cardinalidade de essencialidade), `labels`, `records` (transações e conciliação bancária), `standing_orders` (ordens recorrentes e agendamentos), `budgets` e `goals`.
+  - Conformidade estrita com o padrão de centavos inteiros (`amount_cents: BigInteger`) para zero erro de ponto flutuante.
+- **Motor de Sincronização em Background**: Sincronização em segundo plano com relatórios em tempo real de progresso e contadores por entidade.
+- **Motor Analítico Passado & Futuro**:
+  - *Análise Histórica*: Patrimônio Líquido (Net Worth), fluxo de caixa realizado, distribuição por essencialidade (*Obrigatório*, *Necessário*, *Desejo*), top categorias e métricas de conciliação bancária.
+  - *Análise Futura & Preditiva*: Projeção diária de liquidez (30 a 365 dias) com expansão de regras RFC-5545 RRULE, detecção antecipada de iliquidez, acompanhamento de metas financeiras com cálculo de prazo provável e *burn-rate* diário de orçamentos.
+- **Interface Reformulada**:
+  - Nova aba "Integração Wallet API" em Configurações com teste de latência e progresso em tempo real.
+  - Dashboard completo com alternância Passado vs Futuro e curva preditiva.
+  - Tela de Transações com visualização do saldo das contas e badges de extrato bancário.
+  - Tela de Previsões & Compromissos com gestão de ordens recorrentes, metas e orçamentos.
+  - Calendário financeiro unificado com histórico e agendamentos futuros.
+
+---
+
 ## [1.2.0] - 2026-09-10
 
 ### 🚀 Melhorias

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Repeat,
   CreditCard,
-  CalendarCheck,
   TrendingDown,
   PlayCircle,
   PauseCircle,
@@ -14,11 +13,15 @@ import {
   CalendarClock,
   Layers,
   ShieldCheck,
+  Target,
+  PieChart,
+  AlertTriangle,
 } from "lucide-react";
 import { walletApi } from "../api/walletApi";
 import {
   CommitmentsSummary,
   RecurringCommitmentItem,
+  FutureAnalyticsResponse,
 } from "../types";
 import { formatCurrency, formatDate } from "../utils/format";
 
@@ -30,9 +33,10 @@ export const Commitments: React.FC<CommitmentsProps> = ({
   onOpenNewExpenseModal,
 }) => {
   const [data, setData] = useState<CommitmentsSummary | null>(null);
+  const [futureData, setFutureData] = useState<FutureAnalyticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"recurring" | "installments">("recurring");
+  const [activeTab, setActiveTab] = useState<"recurring" | "goals" | "budgets" | "installments">("recurring");
   const [expandedInstallmentIds, setExpandedInstallmentIds] = useState<Set<string>>(new Set());
   const [isTogglingId, setIsTogglingId] = useState<string | null>(null);
 
@@ -40,10 +44,14 @@ export const Commitments: React.FC<CommitmentsProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const summary = await walletApi.getCommitmentsSummary();
+      const [summary, future] = await Promise.all([
+        walletApi.getCommitmentsSummary(),
+        walletApi.getFutureAnalytics(90).catch(() => null),
+      ]);
       setData(summary);
+      setFutureData(future);
     } catch {
-      setError("Erro ao carregar dados de compromissos financeiros.");
+      setError("Erro ao carregar dados de compromissos financeiros e previsões.");
     } finally {
       setIsLoading(false);
     }
@@ -145,8 +153,25 @@ export const Commitments: React.FC<CommitmentsProps> = ({
         </div>
       </div>
 
+      {/* Alerta Preditivo de Liquidez (Se houver risco de saldo negativo) */}
+      {futureData?.liquidity_alerts && futureData.liquidity_alerts.length > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-start space-x-3 text-amber-900 dark:text-amber-200 shadow-2xs">
+          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+              Aviso Preventivo de Liquidez Futura
+            </h4>
+            {futureData.liquidity_alerts.map((al, idx) => (
+              <p key={idx} className="text-xs text-amber-700 dark:text-amber-300">
+                {al.title}: {al.description} (Déficit projetado: <strong>{formatCurrency(al.projected_deficit_cents)}</strong> em {formatDate(al.date_expected)})
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Cards de Métricas Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Card 1: Custo Fixo Mensal */}
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -163,7 +188,7 @@ export const Commitments: React.FC<CommitmentsProps> = ({
               <span className="text-xs font-medium text-zinc-400 ml-1">/mês</span>
             </span>
             <span className="text-xs text-zinc-500 dark:text-zinc-400 block mt-0.5">
-              {data.active_recurring_count} assinaturas ou contas fixas ativas
+              {data.active_recurring_count} ordens ou contas fixas ativas
             </span>
           </div>
         </div>
@@ -172,7 +197,7 @@ export const Commitments: React.FC<CommitmentsProps> = ({
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Saldo Devedor Parcelado
+              Saldo Parcelado / Dívidas
             </span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
               <CreditCard className="w-4 h-4" />
@@ -183,44 +208,52 @@ export const Commitments: React.FC<CommitmentsProps> = ({
               {formatCurrency(data.total_installments_remaining_cents)}
             </span>
             <span className="text-xs text-zinc-500 dark:text-zinc-400 block mt-0.5">
-              Distribuído em {data.active_installments_count} compras em andamento
+              {data.active_installments_count} planos ou dívidas em andamento
             </span>
           </div>
         </div>
 
-        {/* Card 3: Próxima Quitação */}
+        {/* Card 3: Metas em Acompanhamento */}
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Próxima Quitação de Compra
+              Metas Financeiras
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <CalendarCheck className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <Target className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            {data.next_payoff ? (
-              <>
-                <span className="text-base font-bold text-zinc-900 dark:text-zinc-100 truncate block">
-                  {data.next_payoff.description}
-                </span>
-                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold block mt-0.5">
-                  Término em {formatDate(data.next_payoff.payoff_due_date)} ({data.next_payoff.remaining_installments}x restantes)
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-base font-bold text-zinc-900 dark:text-zinc-100 block">
-                  Nenhum parcelamento ativo
-                </span>
-                <span className="text-xs text-zinc-400 block mt-0.5">
-                  Todas as compras a prazo já foram quitadas!
-                </span>
-              </>
-            )}
+            <span className="text-2xl font-black text-zinc-900 dark:text-zinc-100 block">
+              {futureData?.goals_projections?.length || 0}
+            </span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 block mt-0.5">
+              Metas sincronizadas da Wallet
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Orçamentos Ativos */}
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+              Orçamentos Monitorados
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <PieChart className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-black text-zinc-900 dark:text-zinc-100 block">
+              {futureData?.budgets_forecast?.length || 0}
+            </span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 block mt-0.5">
+              Categorias com limite de gastos
+            </span>
           </div>
         </div>
       </div>
+
 
       {/* Seção de Projeção Visual dos Próximos 12 Meses (Linha de Alívio Financeiro) */}
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
@@ -300,12 +333,12 @@ export const Commitments: React.FC<CommitmentsProps> = ({
         </div>
       </div>
 
-      {/* Abas: Contas Fixas vs Parcelamentos */}
+      {/* Abas: Contas Fixas vs Metas vs Orçamentos vs Parcelamentos */}
       <div className="space-y-4">
-        <div className="flex border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto">
           <button
             onClick={() => setActiveTab("recurring")}
-            className={`pb-3 px-5 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
+            className={`pb-3 px-5 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === "recurring"
                 ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
                 : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -316,8 +349,32 @@ export const Commitments: React.FC<CommitmentsProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab("goals")}
+            className={`pb-3 px-5 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === "goals"
+                ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+            }`}
+          >
+            <Target className="w-4 h-4" />
+            <span>Metas ({futureData?.goals_projections?.length || 0})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("budgets")}
+            className={`pb-3 px-5 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === "budgets"
+                ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+            }`}
+          >
+            <PieChart className="w-4 h-4" />
+            <span>Orçamentos ({futureData?.budgets_forecast?.length || 0})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("installments")}
-            className={`pb-3 px-5 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
+            className={`pb-3 px-5 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === "installments"
                 ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
                 : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -467,7 +524,176 @@ export const Commitments: React.FC<CommitmentsProps> = ({
           </div>
         )}
 
-        {/* Conteúdo Aba 2: Parcelamentos */}
+        {/* Conteúdo Aba 2: Metas Patrimoniais */}
+        {activeTab === "goals" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(futureData?.goals_projections || []).map((goal) => {
+              const isCompleted = goal.current_amount_cents >= goal.target_amount_cents;
+              return (
+                <div
+                  key={goal.goal_id}
+                  className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-2xs space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-200 dark:border-purple-800">
+                        <Target className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                          {goal.name}
+                        </h4>
+                        <span className="text-[11px] text-zinc-400">
+                          {goal.desired_date ? `Alvo: ${formatDate(goal.desired_date)}` : "Sem prazo fixo"}
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        isCompleted
+                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                          : goal.is_on_track
+                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                          : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                      }`}
+                    >
+                      {isCompleted ? "Conquistada" : goal.is_on_track ? "No Ritmo" : "Abaixo do Ritmo"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {formatCurrency(goal.current_amount_cents)}
+                      </span>
+                      <span className="text-zinc-400">
+                        Alvo: {formatCurrency(goal.target_amount_cents)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isCompleted ? "bg-emerald-500" : "bg-purple-600 dark:bg-purple-500"
+                        }`}
+                        style={{ width: `${Math.min(100, goal.progress_percent)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 pt-0.5">
+                      <span>{goal.progress_percent}% acumulado</span>
+                      {goal.monthly_savings_needed_cents > 0 && (
+                        <span>Necessário: {formatCurrency(goal.monthly_savings_needed_cents)}/mês</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {goal.estimated_completion_date && !isCompleted && (
+                    <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                      <span>Previsão estimada:</span>
+                      <strong className="text-zinc-800 dark:text-zinc-200">{formatDate(goal.estimated_completion_date)}</strong>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {(!futureData?.goals_projections || futureData.goals_projections.length === 0) && (
+              <div className="col-span-full text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8">
+                <Target className="w-8 h-8 mx-auto mb-2 opacity-40 text-zinc-400" />
+                <p className="font-semibold text-sm text-zinc-700 dark:text-zinc-300">
+                  Nenhuma meta financeira ativa
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Cadastre ou sincronize metas do Wallet para acompanhar o ritmo preditivo de conquista aqui.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Conteúdo Aba 3: Orçamentos por Categoria */}
+        {activeTab === "budgets" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(futureData?.budgets_forecast || []).map((budget) => {
+              const spentPct = budget.limit_cents > 0 ? Math.round((budget.spent_so_far_cents / budget.limit_cents) * 100) : 0;
+              const isOver = budget.spent_so_far_cents > budget.limit_cents;
+              return (
+                <div
+                  key={budget.budget_id}
+                  className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-2xs space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+                        <PieChart className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                          {budget.name}
+                        </h4>
+                        <span className="text-[11px] text-zinc-400">
+                          {budget.days_remaining} dias restantes no ciclo
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        isOver
+                          ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                          : budget.is_exceeded_projected
+                          ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                          : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                      }`}
+                    >
+                      {isOver ? "Excedido" : budget.is_exceeded_projected ? "Risco de Estouro" : "Dentro do Teto"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-semibold ${isOver ? "text-rose-600 dark:text-rose-400" : "text-zinc-900 dark:text-zinc-100"}`}>
+                        Consumido: {formatCurrency(budget.spent_so_far_cents)}
+                      </span>
+                      <span className="text-zinc-400">
+                        Teto: {formatCurrency(budget.limit_cents)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isOver ? "bg-rose-500" : budget.is_exceeded_projected ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                        style={{ width: `${Math.min(100, spentPct)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 pt-0.5">
+                      <span>{spentPct}% do teto consumido</span>
+                      <span>Disponível: {formatCurrency(budget.remaining_cents)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                    <span>Ritmo diário de consumo:</span>
+                    <strong className="text-zinc-800 dark:text-zinc-200">{formatCurrency(budget.burn_rate_daily_cents)}/dia</strong>
+                  </div>
+                </div>
+              );
+            })}
+
+            {(!futureData?.budgets_forecast || futureData.budgets_forecast.length === 0) && (
+              <div className="col-span-full text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8">
+                <PieChart className="w-8 h-8 mx-auto mb-2 opacity-40 text-zinc-400" />
+                <p className="font-semibold text-sm text-zinc-700 dark:text-zinc-300">
+                  Nenhum orçamento configurado
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Defina orçamentos de gastos no app Wallet para monitorar o ritmo de consumo aqui.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Conteúdo Aba 4: Parcelamentos */}
         {activeTab === "installments" && (
           <div className="space-y-3">
             {data.installment_commitments.map((item) => {

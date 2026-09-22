@@ -16,6 +16,8 @@ from app.api.v1.storage import router as storage_router
 from app.api.v1.attachments import router as attachments_router
 from app.api.v1.wallet_integration import router as wallet_integration_router
 from app.api.v1.analytics import router as analytics_router
+from app.api.v1.accounts import router as accounts_router
+from app.api.v1.records import router as records_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -36,6 +38,9 @@ api_router.include_router(storage_router)
 api_router.include_router(attachments_router)
 api_router.include_router(wallet_integration_router)
 api_router.include_router(analytics_router)
+api_router.include_router(accounts_router)
+api_router.include_router(records_router)
+
 
 
 

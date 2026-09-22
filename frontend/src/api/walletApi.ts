@@ -49,7 +49,10 @@ import {
   FinancialOverviewResponse,
   HistoricalAnalyticsResponse,
   FutureAnalyticsResponse,
+  WalletAccount,
+  PaginatedRecordsResponse,
 } from "../types";
+
 
 
 
@@ -438,7 +441,33 @@ export const walletApi = {
     });
     return data;
   },
+
+  // ----------------------------------------------------------------------
+  // Contas e Transações Sincronizadas da API
+  // ----------------------------------------------------------------------
+
+  async getAccounts(): Promise<WalletAccount[]> {
+    const { data } = await api.get<WalletAccount[]>("/accounts");
+    return data;
+  },
+
+  async getRecords(params?: {
+    account_id?: string;
+    category_id?: string;
+    record_type?: string;
+    record_state?: string;
+    month?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedRecordsResponse> {
+    const { data } = await api.get<PaginatedRecordsResponse>("/records", {
+      params,
+    });
+    return data;
+  },
 };
+
 
 
 

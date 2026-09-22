@@ -29,6 +29,11 @@ async def lifespan(app: FastAPI):
     """Ciclo de vida assíncrono da aplicação: inicialização de tabelas e sementes."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migrações incrementais idempotentes para tabelas legadas
+        await conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id VARCHAR(36) REFERENCES categories(id) ON DELETE SET NULL;"))
+        await conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS group_name VARCHAR(100);"))
+        await conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS cardinality VARCHAR(20) DEFAULT 'NENHUM';"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_categories_user_group ON categories (user_id, group_name);"))
     await seed_initial_data()
     yield
     await engine.dispose()

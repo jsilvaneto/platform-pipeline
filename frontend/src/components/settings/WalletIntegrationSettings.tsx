@@ -17,7 +17,6 @@ import {
   Clock,
   Database,
   Info,
-  Layers,
   ArrowDownCircle,
   Check,
 } from "lucide-react";

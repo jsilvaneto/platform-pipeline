@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 from sqlalchemy import String, Boolean, BigInteger, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -8,7 +9,7 @@ class WalletBudget(Base):
     """Orçamentos e limites de despesas com intervalos periódicos (mês, ano, customizado)."""
     __tablename__ = "budgets"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)

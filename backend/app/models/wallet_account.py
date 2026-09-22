@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 from sqlalchemy import String, Boolean, BigInteger, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -11,7 +12,7 @@ class WalletAccount(Base):
         Index("ix_accounts_user_type", "user_id", "account_type"),
     )
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
@@ -39,3 +40,4 @@ class WalletAccount(Base):
     )
 
     user = relationship("User", backref="accounts", lazy="selectin")
+    records = relationship("WalletRecord", back_populates="account", cascade="all, delete-orphan")
