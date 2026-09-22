@@ -6,6 +6,7 @@ from app.models.payment_method import PaymentMethod
 from app.models.expense import Expense
 from app.models.payment import Payment
 from app.models.attachment import Attachment
+from app.models.wallet_integration import WalletIntegration
 
 __all__ = [
     "User",
@@ -16,4 +17,6 @@ __all__ = [
     "Expense",
     "Payment",
     "Attachment",
+    "WalletIntegration",
 ]
+

@@ -37,7 +37,9 @@ import { walletApi } from "../api/walletApi";
 import { Modal } from "../components/Modal";
 import { ChangelogModal } from "../components/ChangelogModal";
 import { BackupManager } from "../components/settings/BackupManager";
+import { WalletIntegrationSettings } from "../components/settings/WalletIntegrationSettings";
 import { useAuth } from "../context/AuthContext";
+
 import {
   Category,
   PaymentMethod,
@@ -172,8 +174,9 @@ const getPaymentMethodIcon = (type: PaymentMethodType) => {
 export const Settings: React.FC = () => {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    "categories" | "items" | "payment_methods" | "users" | "system" | "backups"
-  >("categories");
+    "integrations" | "categories" | "items" | "payment_methods" | "users" | "system" | "backups"
+  >("integrations");
+
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -780,6 +783,18 @@ export const Settings: React.FC = () => {
       {/* Abas de Navegação */}
       <div className="flex flex-wrap gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2">
         <button
+          onClick={() => setActiveTab("integrations")}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+            activeTab === "integrations"
+              ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+              : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          }`}
+        >
+          <Cloud className="w-4 h-4 text-blue-500" />
+          <span>Integração Wallet API</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab("categories")}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
             activeTab === "categories"
@@ -790,6 +805,7 @@ export const Settings: React.FC = () => {
           <Tag className="w-4 h-4" />
           <span>Categorias ({categories.length})</span>
         </button>
+
 
         <button
           onClick={() => setActiveTab("items")}
@@ -858,7 +874,10 @@ export const Settings: React.FC = () => {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
         </div>
+      ) : activeTab === "integrations" ? (
+        <WalletIntegrationSettings />
       ) : activeTab === "categories" ? (
+
         /* Aba 1: Tabela de Categorias */
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
           <table className="w-full text-left border-collapse">

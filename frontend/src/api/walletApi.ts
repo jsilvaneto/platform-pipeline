@@ -40,7 +40,12 @@ import {
   AttachmentCategory,
   Attachment,
   AttachmentListResponse,
+  WalletIntegrationResponse,
+  WalletIntegrationCreate,
+  WalletIntegrationTestRequest,
+  WalletIntegrationTestResponse,
 } from "../types";
+
 
 
 export const walletApi = {
@@ -359,6 +364,41 @@ export const walletApi = {
     const baseUrl = api.defaults.baseURL || "/api/v1";
     return `${baseUrl}/attachments/${attachmentId}/download`;
   },
+
+  // ----------------------------------------------------------------------
+  // Integração BudgetBakers Wallet REST API
+  // ----------------------------------------------------------------------
+
+  async getWalletIntegration(): Promise<WalletIntegrationResponse> {
+    const { data } = await api.get<WalletIntegrationResponse>("/wallet-integration");
+    return data;
+  },
+
+  async saveWalletCredentials(
+    payload: WalletIntegrationCreate
+  ): Promise<WalletIntegrationResponse> {
+    const { data } = await api.post<WalletIntegrationResponse>(
+      "/wallet-integration",
+      payload
+    );
+    return data;
+  },
+
+  async testWalletConnection(
+    payload?: WalletIntegrationTestRequest
+  ): Promise<WalletIntegrationTestResponse> {
+    const { data } = await api.post<WalletIntegrationTestResponse>(
+      "/wallet-integration/test",
+      payload || {}
+    );
+    return data;
+  },
+
+  async deleteWalletCredentials(): Promise<{ detail: string }> {
+    const { data } = await api.delete<{ detail: string }>("/wallet-integration");
+    return data;
+  },
 };
+
 
 

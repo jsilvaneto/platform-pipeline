@@ -629,6 +629,54 @@ export interface AttachmentListResponse {
   total: number;
 }
 
+// ----------------------------------------------------------------------
+// Integração Oficial BudgetBakers Wallet REST API
+// ----------------------------------------------------------------------
+
+export type WalletSyncStatus =
+  | "NOT_CONFIGURED"
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "SUCCESS"
+  | "FAILED"
+  | "RATE_LIMITED";
+
+export interface WalletIntegrationResponse {
+  id: string;
+  user_id: string;
+  api_base_url: string;
+  token_masked?: string | null;
+  is_configured: boolean;
+  is_active: boolean;
+  last_sync_at?: string | null;
+  last_sync_rev?: number | null;
+  last_sync_status: WalletSyncStatus;
+  last_error_message?: string | null;
+  rate_limit_remaining?: number | null;
+  rate_limit_limit?: number | null;
+  rate_limit_reset_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WalletIntegrationCreate {
+  api_key: string;
+  api_base_url?: string;
+}
+
+export interface WalletIntegrationTestRequest {
+  api_key?: string;
+}
+
+export interface WalletIntegrationTestResponse {
+  success: boolean;
+  message: string;
+  latency_ms: number;
+  status_code: number;
+  api_usage?: Record<string, string | number | boolean | null> | null;
+}
+
+
 
 
 

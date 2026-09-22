@@ -18,6 +18,13 @@ from app.schemas.storage import (
     StorageConfigResponse,
     StorageConfigUpdate,
 )
+from app.schemas.wallet_integration import (
+    WalletIntegrationCreate,
+    WalletIntegrationUpdate,
+    WalletIntegrationResponse,
+    WalletIntegrationTestRequest,
+    WalletIntegrationTestResponse,
+)
 
 __all__ = [
     "UserCreate",
@@ -58,4 +65,10 @@ __all__ = [
     "StorageSuggestion",
     "StorageConfigResponse",
     "StorageConfigUpdate",
+    "WalletIntegrationCreate",
+    "WalletIntegrationUpdate",
+    "WalletIntegrationResponse",
+    "WalletIntegrationTestRequest",
+    "WalletIntegrationTestResponse",
 ]
+
