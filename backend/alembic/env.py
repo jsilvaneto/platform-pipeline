@@ -9,13 +9,8 @@ from alembic import context
 
 from app.core.config import settings
 from app.database import Base
-from app.models.user import User  # noqa: F401
-from app.models.category import Category  # noqa: F401
-from app.models.item import Item  # noqa: F401
-from app.models.contact import Contact  # noqa: F401
-from app.models.payment_method import PaymentMethod  # noqa: F401
-from app.models.expense import Expense  # noqa: F401
-from app.models.payment import Payment  # noqa: F401
+import app.models  # noqa: F401
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

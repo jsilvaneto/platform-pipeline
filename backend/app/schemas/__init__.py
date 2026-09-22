@@ -24,9 +24,20 @@ from app.schemas.wallet_integration import (
     WalletIntegrationResponse,
     WalletIntegrationTestRequest,
     WalletIntegrationTestResponse,
+    WalletSyncTriggerRequest,
+    WalletSyncJobStatus,
+)
+from app.schemas.analytics import (
+    HistoricalAnalyticsResponse,
+    FutureAnalyticsResponse,
+    FinancialOverviewResponse,
+    DailyBalanceProjection,
+    CashFlowMonthly,
 )
 
 __all__ = [
+
+
     "UserCreate",
     "UserUpdate",
     "UserResponse",
@@ -70,5 +81,14 @@ __all__ = [
     "WalletIntegrationResponse",
     "WalletIntegrationTestRequest",
     "WalletIntegrationTestResponse",
+    "WalletSyncTriggerRequest",
+    "WalletSyncJobStatus",
+    "HistoricalAnalyticsResponse",
+    "FutureAnalyticsResponse",
+    "FinancialOverviewResponse",
+    "DailyBalanceProjection",
+    "CashFlowMonthly",
 ]
+
+
 

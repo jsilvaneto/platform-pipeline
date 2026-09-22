@@ -676,6 +676,186 @@ export interface WalletIntegrationTestResponse {
   api_usage?: Record<string, string | number | boolean | null> | null;
 }
 
+export type WalletSyncMode = "full" | "incremental";
+
+export interface WalletSyncJobStatus {
+  is_running: boolean;
+  step: string;
+  progress_percent: number;
+  message: string;
+  status: "IDLE" | "IN_PROGRESS" | "SUCCESS" | "FAILED" | "RATE_LIMITED" | "INIT_SYNC_WAITING";
+  started_at?: string | null;
+  finished_at?: string | null;
+  error?: string | null;
+  items_synced?: {
+    accounts: number;
+    categories: number;
+    labels: number;
+    records: number;
+    budgets: number;
+    standing_orders: number;
+    goals: number;
+  };
+}
+
+// ----------------------------------------------------------------------
+// Inteligência Financeira: Análises Passadas e Futuras
+// ----------------------------------------------------------------------
+
+export interface NetWorthSummary {
+  total_net_worth_cents: number;
+  total_assets_cents: number;
+  total_liabilities_cents: number;
+  currency_code: string;
+}
+
+export interface NetWorthPoint {
+  date: string;
+  net_worth_cents: number;
+  assets_cents: number;
+  liabilities_cents: number;
+}
+
+export interface CashFlowMonthly {
+  period: string;
+  month_name: string;
+  income_cents: number;
+  expense_cents: number;
+  net_savings_cents: number;
+  savings_rate_percent: number;
+}
+
+export interface EssentialityBreakdown {
+  cardinality: string;
+  label: string;
+  total_cents: number;
+  percentage: number;
+  color: string;
+}
+
+export interface CategoryBreakdown {
+  category_id: string;
+  name: string;
+  group_name?: string | null;
+  color: string;
+  icon: string;
+  cardinality: string;
+  total_cents: number;
+  percentage: number;
+  records_count: number;
+}
+
+export interface LabelBreakdown {
+  label_id: string;
+  name: string;
+  color: string;
+  total_cents: number;
+  records_count: number;
+}
+
+export interface ReconciliationMetrics {
+  total_records: number;
+  reconciled_count: number;
+  cleared_count: number;
+  uncleared_count: number;
+  void_count: number;
+  reconciled_percent: number;
+}
+
+export interface HistoricalAnalyticsResponse {
+  net_worth: NetWorthSummary;
+  net_worth_history: NetWorthPoint[];
+  monthly_cash_flow: CashFlowMonthly[];
+  by_essentiality: EssentialityBreakdown[];
+  top_categories: CategoryBreakdown[];
+  top_labels: LabelBreakdown[];
+  reconciliation: ReconciliationMetrics;
+}
+
+export interface DailyBalanceProjection {
+  date: string;
+  weekday: string;
+  day_inflow_cents: number;
+  day_outflow_cents: number;
+  projected_balance_cents: number;
+  is_negative: boolean;
+  scheduled_items_count: number;
+}
+
+export interface UpcomingScheduledItem {
+  id: string;
+  name: string;
+  amount_cents: number;
+  record_type: string;
+  due_date: string;
+  account_name: string;
+  category_name: string;
+  category_color: string;
+  recurrence_rule: string;
+  reminder: string;
+}
+
+export interface GoalProjection {
+  goal_id: string;
+  name: string;
+  target_amount_cents: number;
+  current_amount_cents: number;
+  progress_percent: number;
+  desired_date?: string | null;
+  estimated_completion_date?: string | null;
+  is_on_track: boolean;
+  monthly_savings_needed_cents: number;
+  state: string;
+}
+
+export interface BudgetForecast {
+  budget_id: string;
+  name: string;
+  limit_cents: number;
+  spent_so_far_cents: number;
+  projected_end_of_period_cents: number;
+  is_exceeded_projected: boolean;
+  burn_rate_daily_cents: number;
+  remaining_cents: number;
+  days_remaining: number;
+}
+
+export interface LiquidityAlert {
+  severity: string;
+  title: string;
+  description: string;
+  date_expected: string;
+  projected_deficit_cents: number;
+}
+
+export interface FutureAnalyticsResponse {
+  horizon_days: number;
+  current_liquid_balance_cents: number;
+  projected_lowest_balance_cents: number;
+  projected_lowest_date?: string | null;
+  daily_projections: DailyBalanceProjection[];
+  upcoming_scheduled: UpcomingScheduledItem[];
+  goals_projections: GoalProjection[];
+  budgets_forecast: BudgetForecast[];
+  liquidity_alerts: LiquidityAlert[];
+}
+
+export interface FinancialOverviewResponse {
+  current_net_worth_cents: number;
+  current_month_income_cents: number;
+  current_month_expense_cents: number;
+  current_month_balance_cents: number;
+  savings_rate_percent: number;
+  projected_30d_balance_cents: number;
+  total_accounts_count: number;
+  active_standing_orders_count: number;
+  active_goals_count: number;
+  liquidity_risk_detected: boolean;
+  last_sync_at?: string | null;
+}
+
+
+
 
 
 

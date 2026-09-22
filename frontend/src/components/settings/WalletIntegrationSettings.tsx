@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Cloud,
   Key,
@@ -17,11 +17,16 @@ import {
   Clock,
   Database,
   Info,
+  Layers,
+  ArrowDownCircle,
+  Check,
 } from "lucide-react";
 import { walletApi } from "../../api/walletApi";
 import {
   WalletIntegrationResponse,
   WalletIntegrationTestResponse,
+  WalletSyncJobStatus,
+  WalletSyncMode,
 } from "../../types";
 import { formatDate } from "../../utils/format";
 
@@ -40,6 +45,12 @@ export const WalletIntegrationSettings: React.FC = () => {
   } | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<boolean>(false);
 
+  // Estados do Motor de Sincronização
+  const [syncMode, setSyncMode] = useState<WalletSyncMode>("incremental");
+  const [syncJob, setSyncJob] = useState<WalletSyncJobStatus | null>(null);
+  const [isStartingSync, setIsStartingSync] = useState<boolean>(false);
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const loadIntegration = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -55,9 +66,60 @@ export const WalletIntegrationSettings: React.FC = () => {
     }
   }, []);
 
+  const checkSyncStatus = useCallback(async () => {
+    try {
+      const status = await walletApi.getWalletSyncStatus();
+      setSyncJob(status);
+
+      if (!status.is_running && pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+        if (status.status === "SUCCESS") {
+          setFeedback({
+            type: "success",
+            message: status.message || "Sincronização concluída com sucesso!",
+          });
+          // Recarrega informações atualizadas do banco e watermarks
+          const updated = await walletApi.getWalletIntegration();
+          setIntegration(updated);
+        } else if (status.status === "FAILED") {
+          setFeedback({
+            type: "error",
+            message: status.error || "Falha na sincronização dos dados.",
+          });
+        }
+      }
+    } catch {
+      // Falha silenciosa no polling
+    }
+  }, []);
+
   useEffect(() => {
     loadIntegration();
-  }, [loadIntegration]);
+    checkSyncStatus();
+
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+      }
+    };
+  }, [loadIntegration, checkSyncStatus]);
+
+  // Disparo do Polling enquanto estiver rodando
+  useEffect(() => {
+    if (syncJob?.is_running && !pollTimerRef.current) {
+      pollTimerRef.current = setInterval(() => {
+        checkSyncStatus();
+      }, 2000);
+    }
+
+    return () => {
+      if (pollTimerRef.current && !syncJob?.is_running) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [syncJob?.is_running, checkSyncStatus]);
 
   const handleSaveCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +171,6 @@ export const WalletIntegrationSettings: React.FC = () => {
           type: "success",
           message: `Conexão bem-sucedida! Latência: ${res.latency_ms}ms.`,
         });
-        // Recarrega dados atualizados de rate limit
         await loadIntegration();
       } else {
         setFeedback({
@@ -124,6 +185,31 @@ export const WalletIntegrationSettings: React.FC = () => {
       });
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleStartSync = async () => {
+    try {
+      setIsStartingSync(true);
+      setFeedback(null);
+      const job = await walletApi.triggerWalletSync(syncMode);
+      setSyncJob(job);
+
+      if (job.is_running) {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        pollTimerRef.current = setInterval(() => {
+          checkSyncStatus();
+        }, 2000);
+      }
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : "Não foi possível iniciar a sincronização.";
+      setFeedback({
+        type: "error",
+        message: errorMsg,
+      });
+    } finally {
+      setIsStartingSync(false);
     }
   };
 
@@ -157,6 +243,7 @@ export const WalletIntegrationSettings: React.FC = () => {
   }
 
   const isConfigured = integration?.is_configured ?? false;
+  const isSyncRunning = syncJob?.is_running ?? false;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -192,7 +279,7 @@ export const WalletIntegrationSettings: React.FC = () => {
             {isConfigured ? (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-                Configurado & Ativo
+                Conectado & Ativo
               </span>
             ) : (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
@@ -284,7 +371,139 @@ export const WalletIntegrationSettings: React.FC = () => {
         </div>
       )}
 
-      {/* Painel Central: Inserção do Token e Gerenciamento */}
+      {/* Painel de Controle de Sincronização */}
+      {isConfigured && (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-sm">
+                <RefreshCw className={`w-5 h-5 ${isSyncRunning ? "animate-spin" : ""}`} />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  Motor de Sincronização
+                </h4>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Extrai dados em lote e atualiza o banco de dados PostgreSQL
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleStartSync}
+                disabled={isSyncRunning || isStartingSync}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium px-5 py-2.5 rounded-xl text-sm shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+              >
+                {isSyncRunning || isStartingSync ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                <span>{isSyncRunning ? "Sincronizando..." : "Sincronizar Agora"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Seletor de Modo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div
+              onClick={() => !isSyncRunning && setSyncMode("incremental")}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                syncMode === "incremental"
+                  ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-950 dark:text-blue-100"
+                  : "bg-zinc-50/70 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  Sincronização Incremental (Rápida)
+                </span>
+                {syncMode === "incremental" && (
+                  <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Busca apenas alterações e novas transações desde a última revisão. Consome apenas 1 a 3 requisições da cota.
+              </p>
+            </div>
+
+            <div
+              onClick={() => !isSyncRunning && setSyncMode("full")}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                syncMode === "full"
+                  ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-950 dark:text-blue-100"
+                  : "bg-zinc-50/70 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold flex items-center gap-1.5">
+                  <ArrowDownCircle className="w-3.5 h-3.5 text-blue-500" />
+                  Carga Completa (Histórico Total)
+                </span>
+                {syncMode === "full" && (
+                  <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Varre todo o histórico da conta desde o primeiro lançamento registrado com paginação otimizada (limit=200).
+              </p>
+            </div>
+          </div>
+
+          {/* Progresso ao Vivo */}
+          {syncJob && (syncJob.is_running || syncJob.status !== "IDLE") && (
+            <div className="mt-4 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/40 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                  {syncJob.is_running && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                  )}
+                  <span>{syncJob.message}</span>
+                </span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                  {syncJob.progress_percent}%
+                </span>
+              </div>
+
+              <div className="w-full bg-zinc-200 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-600 to-cyan-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${syncJob.progress_percent}%` }}
+                />
+              </div>
+
+              {/* Badges de Entidades */}
+              {syncJob.items_synced && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-200/50 dark:border-zinc-700/50 text-[11px]">
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                    Contas: <strong>{syncJob.items_synced.accounts ?? 0}</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                    Categorias: <strong>{syncJob.items_synced.categories ?? 0}</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                    Etiquetas: <strong>{syncJob.items_synced.labels ?? 0}</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold">
+                    Transações: <strong>{syncJob.items_synced.records ?? 0}</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                    Recorrências: <strong>{syncJob.items_synced.standing_orders ?? 0}</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                    Metas: <strong>{syncJob.items_synced.goals ?? 0}</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Painel: Credenciais e Segurança */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Formulário de Configuração (2 colunas) */}
         <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
@@ -297,7 +516,7 @@ export const WalletIntegrationSettings: React.FC = () => {
                 Credencial de Acesso (API Key)
               </h4>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Insira o token pessoal gerado no Wallet web app
+                Insira ou atualize o token pessoal gerado no Wallet web app
               </p>
             </div>
           </div>
@@ -412,9 +631,8 @@ export const WalletIntegrationSettings: React.FC = () => {
           )}
         </div>
 
-        {/* Card Lateral: Blindagem & Instruções */}
+        {/* Card Lateral: Instruções */}
         <div className="space-y-6">
-          {/* Instruções de Obtenção do Token */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
             <h5 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2 mb-3">
               <ExternalLink className="w-4 h-4 text-blue-500" />
@@ -444,7 +662,6 @@ export const WalletIntegrationSettings: React.FC = () => {
             </ol>
           </div>
 
-          {/* Garantias de Segurança (Zero Exposure) */}
           <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/30 dark:from-zinc-800/40 dark:to-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-5">
             <h5 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2 mb-3">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />

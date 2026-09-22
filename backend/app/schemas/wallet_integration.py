@@ -47,3 +47,30 @@ class WalletIntegrationTestResponse(BaseModel):
     latency_ms: int
     status_code: int
     api_usage: dict[str, str | int | float | bool | None] | None = None
+
+
+class WalletSyncTriggerRequest(BaseModel):
+    """Payload para acionamento de sincronização (full ou incremental)."""
+    mode: str = Field(default="incremental", pattern="^(full|incremental)$")
+
+
+class WalletSyncJobStatus(BaseModel):
+    """Estado em tempo real da tarefa de sincronização em background."""
+    is_running: bool = False
+    step: str = "IDLE"
+    progress_percent: int = 0
+    message: str = "Nenhuma sincronização em execução."
+    status: str = "IDLE"  # IDLE, IN_PROGRESS, SUCCESS, FAILED, RATE_LIMITED, INIT_SYNC_WAITING
+    started_at: str | None = None
+    finished_at: str | None = None
+    error: str | None = None
+    items_synced: dict[str, int] = Field(default_factory=lambda: {
+        "accounts": 0,
+        "categories": 0,
+        "labels": 0,
+        "records": 0,
+        "budgets": 0,
+        "standing_orders": 0,
+        "goals": 0,
+    })
+

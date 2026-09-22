@@ -44,7 +44,14 @@ import {
   WalletIntegrationCreate,
   WalletIntegrationTestRequest,
   WalletIntegrationTestResponse,
+  WalletSyncJobStatus,
+  WalletSyncMode,
+  FinancialOverviewResponse,
+  HistoricalAnalyticsResponse,
+  FutureAnalyticsResponse,
 } from "../types";
+
+
 
 
 
@@ -398,7 +405,42 @@ export const walletApi = {
     const { data } = await api.delete<{ detail: string }>("/wallet-integration");
     return data;
   },
+
+  async triggerWalletSync(mode: WalletSyncMode = "incremental"): Promise<WalletSyncJobStatus> {
+    const { data } = await api.post<WalletSyncJobStatus>("/wallet-integration/sync", { mode });
+    return data;
+  },
+
+  async getWalletSyncStatus(): Promise<WalletSyncJobStatus> {
+    const { data } = await api.get<WalletSyncJobStatus>("/wallet-integration/sync-status");
+    return data;
+  },
+
+  // ----------------------------------------------------------------------
+  // Inteligência Financeira (Passada & Futura)
+  // ----------------------------------------------------------------------
+
+  async getFinancialOverview(): Promise<FinancialOverviewResponse> {
+    const { data } = await api.get<FinancialOverviewResponse>("/analytics/overview");
+    return data;
+  },
+
+  async getHistoricalAnalytics(months: number = 12): Promise<HistoricalAnalyticsResponse> {
+    const { data } = await api.get<HistoricalAnalyticsResponse>("/analytics/past", {
+      params: { months },
+    });
+    return data;
+  },
+
+  async getFutureAnalytics(horizonDays: number = 90): Promise<FutureAnalyticsResponse> {
+    const { data } = await api.get<FutureAnalyticsResponse>("/analytics/future", {
+      params: { horizon_days: horizonDays },
+    });
+    return data;
+  },
 };
+
+
 
 
 

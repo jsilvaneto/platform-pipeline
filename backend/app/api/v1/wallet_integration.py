@@ -9,8 +9,10 @@ from app.schemas.wallet_integration import (
     WalletIntegrationResponse,
     WalletIntegrationTestRequest,
     WalletIntegrationTestResponse,
+    WalletSyncTriggerRequest,
+    WalletSyncJobStatus,
 )
-from app.services import wallet_integration_service
+from app.services import wallet_integration_service, wallet_sync_service
 
 router = APIRouter(prefix="/wallet-integration", tags=["Integração Wallet API"])
 
@@ -55,6 +57,26 @@ async def test_wallet_connection(
     )
 
 
+@router.post("/sync", response_model=WalletSyncJobStatus)
+async def trigger_wallet_sync(
+    payload: WalletSyncTriggerRequest,
+    current_user: User = Depends(get_current_user),
+) -> WalletSyncJobStatus:
+    """Aciona a sincronização em segundo plano (full ou incremental)."""
+    return await wallet_sync_service.trigger_sync(
+        user_id=current_user.id,
+        mode=payload.mode,
+    )
+
+
+@router.get("/sync-status", response_model=WalletSyncJobStatus)
+async def get_wallet_sync_status(
+    current_user: User = Depends(get_current_user),
+) -> WalletSyncJobStatus:
+    """Consulta o progresso em tempo real da tarefa de sincronização ativa."""
+    return wallet_sync_service.get_sync_status(user_id=current_user.id)
+
+
 @router.delete("", status_code=status.HTTP_200_OK)
 async def delete_wallet_credentials(
     db: AsyncSession = Depends(get_db),
@@ -66,3 +88,4 @@ async def delete_wallet_credentials(
         user_id=current_user.id,
     )
     return {"detail": "Credenciais da Wallet API removidas com sucesso."}
+
