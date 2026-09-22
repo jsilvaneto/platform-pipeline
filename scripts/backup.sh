@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Script de Automação de Backup do PostgreSQL para Google Drive
+# Script de Automação de Backup do PostgreSQL (Armazenamento Local / Host WSL)
 # ==============================================================================
 set -euo pipefail
 
@@ -58,15 +58,5 @@ fi
 DUMP_SIZE="$(du -h "$DUMP_PATH" | cut -f1)"
 echo "[+] Dump gerado com sucesso: ${DUMP_PATH} (${DUMP_SIZE})"
 
-# Upload para Google Drive
-echo "[*] Executando upload para o Google Drive..."
-if docker ps --format '{{.Names}}' | grep -q 'app_backend'; then
-    docker exec -t app_backend python3 /app/../scripts/backup_gdrive.py upload "/app/../backups/${DUMP_FILENAME}"
-elif command -v python3 &>/dev/null; then
-    python3 "${SCRIPT_DIR}/backup_gdrive.py" upload "$DUMP_PATH"
-else
-    docker run --rm -v "${ROOT_DIR}:/workspace" -w /workspace app-backend:1.0.0 python3 scripts/backup_gdrive.py upload "backups/${DUMP_FILENAME}"
-fi
-
-echo "[+] Processo de backup e sincronização com Google Drive finalizado com sucesso!"
+echo "[+] Processo de backup concluído com sucesso no diretório de backups!"
 echo "================================================================"

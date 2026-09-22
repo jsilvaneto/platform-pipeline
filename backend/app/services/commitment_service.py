@@ -14,7 +14,7 @@ from app.schemas.commitment import (
     NextPayoffInfo,
     MonthlyCommitmentProjection,
 )
-from app.services.expense_service import ensure_recurring_horizon
+from app.services.expense_service import ensure_recurring_horizon, get_expense
 
 MONTH_ABBRS: list[str] = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -37,7 +37,8 @@ async def get_commitments_summary(db: AsyncSession, user_id: str) -> Commitments
             selectinload(Expense.item),
             selectinload(Expense.contact),
             selectinload(Expense.payment_method),
-            selectinload(Expense.payments),
+            selectinload(Expense.payments).selectinload(Payment.attachments),
+            selectinload(Expense.attachments),
         )
         .where(
             Expense.user_id == user_id,
@@ -251,5 +252,4 @@ async def toggle_recurring_commitment(db: AsyncSession, user_id: str, expense_id
                 p.status = "CANCELADO"
 
     await db.commit()
-    await db.refresh(expense)
-    return expense
+    return await get_expense(db, user_id, expense_id)

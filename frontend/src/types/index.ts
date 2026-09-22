@@ -516,43 +516,27 @@ export interface CommitmentsSummary {
   monthly_projection: MonthlyCommitmentProjection[];
 }
 
-// Tipos de Backup e Google Drive
-export type BackupSource = "gdrive" | "local";
-
-export interface GoogleDriveConfigStatus {
-  is_configured: boolean;
-  connection_ok: boolean;
-  folder_id: string | null;
-  auth_type?: "oauth2" | "service_account" | null;
-  account_email?: string | null;
-  oauth_client_configured?: boolean;
-  service_account_email: string | null;
-  retention_days: number;
-  status_message: string;
-}
-
+// Tipos de Backup e Armazenamento
 export interface BackupItem {
   id: string;
   filename: string;
   size_bytes: number;
   size_pretty: string;
   created_at: string;
-  source: BackupSource;
-  drive_file_id?: string | null;
+  source: "local";
 }
 
 export interface BackupListResponse {
   items: BackupItem[];
   total: number;
-  google_drive_connected: boolean;
 }
 
 export interface BackupStatusResponse {
-  google_drive: GoogleDriveConfigStatus;
   local_backups_count: number;
-  drive_backups_count: number;
   total_disk_usage_pretty: string;
   last_backup_at?: string | null;
+  retention_days: number;
+  backups_dir: string;
 }
 
 export interface BackupCreateResponse {
@@ -561,14 +545,12 @@ export interface BackupCreateResponse {
   size_bytes: number;
   size_pretty: string;
   created_at: string;
-  uploaded_to_gdrive: boolean;
-  drive_file_id?: string | null;
   message: string;
 }
 
 export interface BackupRestoreRequest {
   backup_id: string;
-  source: BackupSource;
+  source?: "local";
   confirmation_token: string;
 }
 
@@ -578,32 +560,6 @@ export interface BackupRestoreResponse {
   restored_at: string;
 }
 
-export interface GoogleDriveConfigUpdateRequest {
-  folder_id: string | null;
-  retention_days: number;
-}
-
-export interface GoogleOAuthInitRequest {
-  redirect_uri: string;
-  client_id?: string | null;
-  client_secret?: string | null;
-}
-
-export interface GoogleOAuthInitResponse {
-  auth_url: string;
-  redirect_uri: string;
-}
-
-export interface GoogleOAuthExchangeRequest {
-  code: string;
-  redirect_uri: string;
-  folder_id?: string | null;
-}
-
-export interface GoogleOAuthClientSaveRequest {
-  client_id: string;
-  client_secret: string;
-}
 
 // ----------------------------------------------------------------------
 // Armazenamento & Diretórios Host (WSL / Windows)

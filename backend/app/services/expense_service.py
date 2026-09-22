@@ -163,7 +163,8 @@ async def get_expense(db: AsyncSession, user_id: str, expense_id: str) -> Expens
             selectinload(Expense.item).selectinload(Item.category),
             selectinload(Expense.contact),
             selectinload(Expense.payment_method),
-            selectinload(Expense.payments),
+            selectinload(Expense.payments).selectinload(Payment.attachments),
+            selectinload(Expense.attachments),
         )
         .where(Expense.id == expense_id, Expense.user_id == user_id)
     )
@@ -278,7 +279,8 @@ async def list_expenses(
             selectinload(Expense.item).selectinload(Item.category),
             selectinload(Expense.contact),
             selectinload(Expense.payment_method),
-            selectinload(Expense.payments),
+            selectinload(Expense.payments).selectinload(Payment.attachments),
+            selectinload(Expense.attachments),
         )
         .where(Expense.user_id == user_id)
     )
