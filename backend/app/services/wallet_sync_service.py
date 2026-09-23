@@ -36,6 +36,26 @@ CARDINALITY_MAP = {
 }
 
 
+def _extract_group_name(raw_group: Any) -> str | None:
+    """Extrai string segura para o nome do grupo da categoria, mesmo se for dict da API."""
+    if isinstance(raw_group, dict):
+        name = raw_group.get("name") or raw_group.get("id")
+        return str(name)[:100] if name else None
+    if raw_group:
+        return str(raw_group)[:100]
+    return None
+
+
+def _extract_amount(val: Any) -> float:
+    """Extrai valor numérico decimal seguro de campos da API (float ou dict com value)."""
+    if isinstance(val, dict):
+        return float(val.get("value", 0) or 0)
+    try:
+        return float(val or 0)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 def get_sync_status(user_id: str) -> WalletSyncJobStatus:
     """Retorna o status atual do job de sincronização para o usuário informado."""
     if user_id in _active_jobs:
@@ -166,12 +186,13 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                 if not parent_id:
                     raw_card = str(cat.get("cardinality", "none")).lower()
                     cardinality = CARDINALITY_MAP.get(raw_card, "NENHUM")
+                    group_name = _extract_group_name(cat.get("group") or cat.get("groupName"))
                     cat_obj = Category(
                         id=cat_id,
                         user_id=user_id,
                         parent_id=None,
                         name=str(cat.get("name", "Categoria")),
-                        group_name=cat.get("group") or cat.get("groupName"),
+                        group_name=group_name,
                         cardinality=cardinality,
                         icon=str(cat.get("icon", "Tag")),
                         color=str(cat.get("color", "#6366f1")),
@@ -186,12 +207,13 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                 if cat_id and parent_id:
                     raw_card = str(cat.get("cardinality", "none")).lower()
                     cardinality = CARDINALITY_MAP.get(raw_card, "NENHUM")
+                    group_name = _extract_group_name(cat.get("group") or cat.get("groupName"))
                     sub_obj = Category(
                         id=cat_id,
                         user_id=user_id,
                         parent_id=str(parent_id),
                         name=str(cat.get("name", "Subcategoria")),
-                        group_name=cat.get("group") or cat.get("groupName"),
+                        group_name=group_name,
                         cardinality=cardinality,
                         icon=str(cat.get("icon", "Tag")),
                         color=str(cat.get("color", "#6366f1")),
@@ -269,8 +291,11 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                     if state not in ("reconciled", "cleared", "uncleared", "void", "waitForAssign"):
                         state = "cleared"
 
-                    cat_id = rec.get("categoryId")
-                    cat_fk = str(cat_id) if cat_id and cat_id != "unknown" else None
+                    cat_val = rec.get("categoryId") or (rec.get("category", {}).get("id") if isinstance(rec.get("category"), dict) else None)
+                    cat_fk = str(cat_val) if cat_val and cat_val != "unknown" else None
+
+                    raw_cp = rec.get("counterParty")
+                    cp_str = str(raw_cp.get("name") or raw_cp.get("id")) if isinstance(raw_cp, dict) else (str(raw_cp) if raw_cp is not None else None)
 
                     rec_obj = WalletRecord(
                         id=rec_id,
@@ -283,8 +308,8 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                         converted_amount_cents=converted_cents,
                         record_date=str(rec.get("recordDate", "")),
                         record_state=state,
-                        counter_party=rec.get("counterParty"),
-                        note=rec.get("note"),
+                        counter_party=cp_str,
+                        note=str(rec.get("note")) if rec.get("note") is not None else None,
                         source=str(rec.get("source", "rest")),
                         is_transfer=is_transf,
                         transfer_id=rec.get("transfer", {}).get("transferId") if isinstance(rec.get("transfer"), dict) else None,
@@ -318,12 +343,12 @@ async def _execute_sync(user_id: str, mode: str) -> None:
             job.progress_percent = 78
             job.message = "Sincronizando tetos e orçamentos programados..."
             
-            raw_budgets = await client.get_budgets(limit=200)
+            raw_budgets = await client.get_budgets(limit=20)
             for bgt in raw_budgets:
                 b_id = str(bgt.get("id"))
                 if not b_id:
                     continue
-                b_amount = round(float(bgt.get("amount", 0) or 0) * 100)
+                b_amount = round(_extract_amount(bgt.get("amount", 0)) * 100)
                 bgt_obj = WalletBudget(
                     id=b_id,
                     user_id=user_id,
@@ -351,12 +376,14 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                 acc_id = str(so.get("accountId"))
                 if not so_id or not acc_id:
                     continue
-                so_amount = round(float(so.get("amount", 0) or 0) * 100)
+                so_amount = round(_extract_amount(so.get("amount", 0)) * 100)
+                so_cat_val = so.get("categoryId") or (so.get("category", {}).get("id") if isinstance(so.get("category"), dict) else None)
+                so_cat_fk = str(so_cat_val) if so_cat_val and so_cat_val != "unknown" else None
                 so_obj = WalletStandingOrder(
                     id=so_id,
                     user_id=user_id,
                     account_id=acc_id,
-                    category_id=str(so.get("categoryId")) if so.get("categoryId") else None,
+                    category_id=so_cat_fk,
                     name=str(so.get("name", "Ordem Permanente")),
                     amount_cents=so_amount,
                     currency_code=str(so.get("currencyCode", "BRL")),
@@ -366,7 +393,7 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                     payment_count=so.get("paymentCount"),
                     reminder=str(so.get("reminder", "none")),
                     is_active=bool(so.get("active", True)),
-                    note=so.get("note"),
+                    note=str(so.get("note")) if so.get("note") is not None else None,
                 )
                 await db.merge(so_obj)
             await db.commit()
@@ -400,9 +427,10 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                 g_id = str(g.get("id"))
                 if not g_id:
                     continue
-                target_cents = round(float(g.get("targetAmount", 0) or 0) * 100)
-                init_cents = round(float(g.get("initialAmount", 0) or 0) * 100)
-                curr_cents = round(float(g.get("currentAmount", init_cents / 100) or 0) * 100)
+                target_cents = round(_extract_amount(g.get("targetAmount", 0)) * 100)
+                init_cents = round(_extract_amount(g.get("initialAmount", 0)) * 100)
+                curr_cents = round(_extract_amount(g.get("currentAmount", init_cents / 100)) * 100)
+                g_currency = (g.get("targetAmount", {}).get("currencyCode") if isinstance(g.get("targetAmount"), dict) else None) or str(g.get("currencyCode", "BRL"))
                 g_state = str(g.get("state", "active"))
                 if g_state not in ("active", "paused", "reached"):
                     g_state = "active"
@@ -411,11 +439,11 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                     id=g_id,
                     user_id=user_id,
                     name=str(g.get("name", "Meta")),
-                    note=g.get("note"),
+                    note=str(g.get("note")) if g.get("note") is not None else None,
                     target_amount_cents=target_cents,
                     initial_amount_cents=init_cents,
                     current_amount_cents=curr_cents,
-                    currency_code=str(g.get("currencyCode", "BRL")),
+                    currency_code=g_currency,
                     desired_date=g.get("desiredDate"),
                     state=g_state,
                     state_updated_at=g.get("stateUpdatedAt"),
@@ -425,9 +453,28 @@ async def _execute_sync(user_id: str, mode: str) -> None:
             job.items_synced["goals"] = len(raw_goals)
 
             # 9. Finalização e Atualização do Watermark
+            now_iso = datetime.now(timezone.utc).isoformat()
+            integration.last_sync_at = now_iso
+            if client.last_data_change_rev:
+                integration.last_sync_rev = client.last_data_change_rev
+            integration.last_sync_status = "SUCCESS"
+            integration.last_error_message = None
+
+            # Tenta atualizar rate limits se disponíveis
+            try:
+                usage = await client.get_usage_stats()
+                if isinstance(usage, dict):
+                    if "remaining" in usage:
+                        integration.rate_limit_remaining = usage["remaining"]
+                    if "limit" in usage:
+                        integration.rate_limit_limit = usage["limit"]
+            except Exception:
+                pass
+
+            await db.commit()
+
             job.step = "CONCLUIDO"
             job.progress_percent = 100
-            now_iso = datetime.now(timezone.utc).isoformat()
             job.finished_at = now_iso
             job.status = "SUCCESS"
             job.is_running = False
@@ -439,22 +486,6 @@ async def _execute_sync(user_id: str, mode: str) -> None:
                 f"{job.items_synced['standing_orders']} recorrências e "
                 f"{job.items_synced['goals']} metas sincronizadas."
             )
-
-            integration.last_sync_at = now_iso
-            if client.last_data_change_rev:
-                integration.last_sync_rev = client.last_data_change_rev
-            integration.last_sync_status = "SUCCESS"
-            integration.last_error_message = None
-
-            # Tenta atualizar rate limits
-            try:
-                usage = await client.get_usage_stats()
-                integration.rate_limit_remaining = usage.get("remaining", integration.rate_limit_remaining)
-                integration.rate_limit_limit = usage.get("limit", integration.rate_limit_limit)
-            except Exception:
-                pass
-
-            await db.commit()
 
         except BudgetBakersAuthError:
             job.is_running = False

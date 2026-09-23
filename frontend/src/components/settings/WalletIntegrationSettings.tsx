@@ -29,6 +29,42 @@ import {
 } from "../../types";
 import { formatDate } from "../../utils/format";
 
+interface PydanticErrorDetail {
+  loc?: (string | number)[];
+  msg?: string;
+  type?: string;
+}
+
+interface ApiErrorResponse {
+  response?: {
+    data?: {
+      detail?: string | PydanticErrorDetail[];
+    };
+  };
+}
+
+const extractErrorMessage = (err: unknown, fallback: string): string => {
+  if (typeof err === "object" && err !== null && "response" in err) {
+    const errorObj = err as ApiErrorResponse;
+    const detail = errorObj.response?.data?.detail;
+    if (typeof detail === "string") {
+      return detail;
+    }
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => item.msg)
+        .filter((msg): msg is string => Boolean(msg));
+      if (messages.length > 0) {
+        return messages.join(", ");
+      }
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+};
+
 export const WalletIntegrationSettings: React.FC = () => {
   const [integration, setIntegration] = useState<WalletIntegrationResponse | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
@@ -144,8 +180,7 @@ export const WalletIntegrationSettings: React.FC = () => {
         message: "Token da API Wallet salvo e criptografado com sucesso!",
       });
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : "Erro ao salvar a chave de API.";
+      const errorMsg = extractErrorMessage(err, "Erro ao salvar a chave de API.");
       setFeedback({
         type: "error",
         message: errorMsg,
@@ -177,10 +212,11 @@ export const WalletIntegrationSettings: React.FC = () => {
           message: res.message,
         });
       }
-    } catch {
+    } catch (err: unknown) {
+      const errorMsg = extractErrorMessage(err, "Falha na comunicação ao tentar testar a conexão com a API.");
       setFeedback({
         type: "error",
-        message: "Falha na comunicação ao tentar testar a conexão com a API.",
+        message: errorMsg,
       });
     } finally {
       setIsTesting(false);
@@ -201,8 +237,7 @@ export const WalletIntegrationSettings: React.FC = () => {
         }, 2000);
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : "Não foi possível iniciar a sincronização.";
+      const errorMsg = extractErrorMessage(err, "Não foi possível iniciar a sincronização.");
       setFeedback({
         type: "error",
         message: errorMsg,
@@ -223,10 +258,11 @@ export const WalletIntegrationSettings: React.FC = () => {
         message: "Credenciais de API removidas com sucesso.",
       });
       await loadIntegration();
-    } catch {
+    } catch (err: unknown) {
+      const errorMsg = extractErrorMessage(err, "Erro ao tentar remover as credenciais.");
       setFeedback({
         type: "error",
-        message: "Erro ao tentar remover as credenciais.",
+        message: errorMsg,
       });
     } finally {
       setIsDeleting(false);

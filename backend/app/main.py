@@ -29,11 +29,17 @@ async def lifespan(app: FastAPI):
     """Ciclo de vida assíncrono da aplicação: inicialização de tabelas e sementes."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Migrações incrementais idempotentes para tabelas legadas
         await conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id VARCHAR(36) REFERENCES categories(id) ON DELETE SET NULL;"))
         await conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS group_name VARCHAR(100);"))
         await conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS cardinality VARCHAR(20) DEFAULT 'NENHUM';"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_categories_user_group ON categories (user_id, group_name);"))
+        await conn.execute(text("ALTER TABLE standing_orders ALTER COLUMN due_date TYPE VARCHAR(40);"))
+        await conn.execute(text("ALTER TABLE standing_order_items ALTER COLUMN original_date TYPE VARCHAR(40);"))
+        await conn.execute(text("ALTER TABLE standing_order_items ALTER COLUMN aligned_date TYPE VARCHAR(40);"))
+        await conn.execute(text("ALTER TABLE standing_order_items ALTER COLUMN paid_date TYPE VARCHAR(40);"))
+        await conn.execute(text("ALTER TABLE budgets ALTER COLUMN start_date TYPE VARCHAR(40);"))
+        await conn.execute(text("ALTER TABLE budgets ALTER COLUMN end_date TYPE VARCHAR(40);"))
+        await conn.execute(text("ALTER TABLE goals ALTER COLUMN desired_date TYPE VARCHAR(40);"))
     await seed_initial_data()
     yield
     await engine.dispose()

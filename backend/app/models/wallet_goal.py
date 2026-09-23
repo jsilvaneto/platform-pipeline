@@ -26,7 +26,7 @@ class WalletGoal(Base):
     current_amount_cents: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     currency_code: Mapped[str] = mapped_column(String(10), default="BRL", nullable=False)
 
-    desired_date: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    desired_date: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
     state: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
     state_updated_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
 

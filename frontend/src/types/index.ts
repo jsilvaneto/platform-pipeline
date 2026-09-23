@@ -10,7 +10,7 @@ export type PaymentMethodType =
   | "BOLETO"
   | "OUTRO";
 
-export type NavTab = "inicio" | "registros" | "calendario" | "compromissos" | "contatos" | "configuracoes";
+export type NavTab = "inicio" | "registros" | "calendario" | "compromissos" | "configuracoes";
 
 export interface User {
   id: string;
@@ -673,7 +673,7 @@ export interface WalletIntegrationTestResponse {
   message: string;
   latency_ms: number;
   status_code: number;
-  api_usage?: Record<string, string | number | boolean | null> | null;
+  api_usage?: Record<string, unknown> | null;
 }
 
 export type WalletSyncMode = "full" | "incremental";

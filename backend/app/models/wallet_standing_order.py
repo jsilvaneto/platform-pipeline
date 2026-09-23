@@ -23,7 +23,7 @@ class WalletStandingOrder(Base):
     record_type: Mapped[str] = mapped_column(String(20), default="DESPESA", nullable=False)
     
     recurrence_rule: Mapped[str] = mapped_column(String(200), nullable=False)
-    due_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+    due_date: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     payment_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reminder: Mapped[str] = mapped_column(String(30), default="none", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -50,9 +50,9 @@ class WalletStandingOrderItem(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     standing_order_id: Mapped[str] = mapped_column(String(36), ForeignKey("standing_orders.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    original_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
-    aligned_date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
-    paid_date: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    original_date: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    aligned_date: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    paid_date: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
     is_dismissed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     record_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
 

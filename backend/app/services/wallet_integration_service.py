@@ -81,6 +81,9 @@ async def save_credentials(
 ) -> WalletIntegrationResponse:
     """Criptografa o token e salva/atualiza as credenciais de integração com atomicidade."""
     clean_token = data.api_key.strip()
+    if clean_token.lower().startswith("bearer "):
+        clean_token = clean_token[7:].strip()
+
     if len(clean_token) < 10:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -148,6 +151,9 @@ async def test_connection(
     else:
         token = await get_decrypted_token(db, user_id)
 
+    if token and token.lower().startswith("bearer "):
+        token = token[7:].strip()
+
     if not token:
         return WalletIntegrationTestResponse(
             success=False,
@@ -161,7 +167,7 @@ async def test_connection(
     result = await db.execute(select(WalletIntegration).where(WalletIntegration.user_id == user_id))
     integration = result.scalar_one_or_none()
     base_url = integration.api_base_url if integration else DEFAULT_BASE_URL
-    target_url = f"{base_url.rstrip('/')}/v1/api/api-usage/stats"
+    target_url = f"{base_url.rstrip('/')}/v1/api/api-usage/stats?period=30days"
 
     start_time = time.perf_counter()
     headers = {
@@ -223,9 +229,15 @@ async def test_connection(
                 api_usage=None,
             )
         else:
+            err_msg = ""
+            try:
+                err_data = resp.json()
+                err_msg = str(err_data.get("error") or err_data.get("message") or resp.text)
+            except Exception:
+                err_msg = resp.text
             return WalletIntegrationTestResponse(
                 success=False,
-                message=f"A API da BudgetBakers respondeu com status inesperado: {resp.status_code}.",
+                message=f"A API da BudgetBakers respondeu com erro ({resp.status_code}): {err_msg}",
                 latency_ms=latency_ms,
                 status_code=resp.status_code,
                 api_usage=None,

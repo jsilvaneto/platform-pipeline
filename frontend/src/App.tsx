@@ -6,7 +6,6 @@ import { Dashboard } from "./pages/Dashboard";
 import { Expenses } from "./pages/Expenses";
 import { Commitments } from "./pages/Commitments";
 import { Calendar } from "./pages/Calendar";
-import { Contacts } from "./pages/Contacts";
 import { Settings } from "./pages/Settings";
 import { Layout } from "./components/Layout";
 import { NavTab } from "./types";
@@ -16,7 +15,6 @@ import "./App.css";
 const MainApp: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [currentTab, setCurrentTab] = useState<NavTab>("inicio");
-  const [isExpenseModalRequested, setIsExpenseModalRequested] = useState<boolean>(false);
 
   if (isLoading) {
     return (
@@ -40,35 +38,20 @@ const MainApp: React.FC = () => {
       {currentTab === "inicio" && (
         <Dashboard
           onNavigateToRegistros={() => setCurrentTab("registros")}
-          onOpenNewExpenseModal={() => {
-            setCurrentTab("registros");
-            setIsExpenseModalRequested(true);
-          }}
+          onOpenNewExpenseModal={() => setCurrentTab("registros")}
         />
       )}
-      {currentTab === "registros" && (
-        <Expenses
-          isCreateModalOpenExternal={isExpenseModalRequested}
-          onCloseCreateModalExternal={() => setIsExpenseModalRequested(false)}
-        />
-      )}
+      {currentTab === "registros" && <Expenses />}
       {currentTab === "calendario" && (
         <Calendar
-          onOpenNewExpenseModal={() => {
-            setCurrentTab("registros");
-            setIsExpenseModalRequested(true);
-          }}
+          onOpenNewExpenseModal={() => setCurrentTab("registros")}
         />
       )}
       {currentTab === "compromissos" && (
         <Commitments
-          onOpenNewExpenseModal={() => {
-            setCurrentTab("registros");
-            setIsExpenseModalRequested(true);
-          }}
+          onOpenNewExpenseModal={() => setCurrentTab("registros")}
         />
       )}
-      {currentTab === "contatos" && <Contacts />}
       {currentTab === "configuracoes" && <Settings />}
     </Layout>
   );

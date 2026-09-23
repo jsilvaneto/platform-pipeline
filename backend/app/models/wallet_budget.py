@@ -17,8 +17,8 @@ class WalletBudget(Base):
     currency_code: Mapped[str] = mapped_column(String(10), default="BRL", nullable=False)
     
     interval_type: Mapped[str] = mapped_column(String(30), default="BUDGET_INTERVAL_MONTH", nullable=False)
-    start_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    end_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     
     raw_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)

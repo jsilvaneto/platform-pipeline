@@ -1,16 +1,17 @@
+from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class WalletIntegrationCreate(BaseModel):
     """Schema para cadastro ou substituição do token pessoal da REST API do Wallet."""
-    api_key: str = Field(..., min_length=10, max_length=500, description="Token Bearer gerado no Wallet (Settings -> REST API)")
-    api_base_url: str = Field(default="https://rest.budgetbakers.com/wallet", max_length=200, description="URL Base oficial da REST API")
+    api_key: str = Field(..., min_length=10, max_length=4096, description="Token Bearer gerado no Wallet (Settings -> REST API)")
+    api_base_url: str = Field(default="https://rest.budgetbakers.com/wallet", max_length=500, description="URL Base oficial da REST API")
 
 
 class WalletIntegrationUpdate(BaseModel):
     """Schema para atualização parcial de configurações."""
-    api_key: str | None = Field(default=None, min_length=10, max_length=500)
-    api_base_url: str | None = Field(default=None, max_length=200)
+    api_key: str | None = Field(default=None, min_length=10, max_length=4096)
+    api_base_url: str | None = Field(default=None, max_length=500)
     is_active: bool | None = None
 
 
@@ -37,7 +38,7 @@ class WalletIntegrationResponse(BaseModel):
 
 class WalletIntegrationTestRequest(BaseModel):
     """Permite testar uma chave digitada no modal ou a chave já salva."""
-    api_key: str | None = Field(default=None, max_length=500)
+    api_key: str | None = Field(default=None, max_length=4096)
 
 
 class WalletIntegrationTestResponse(BaseModel):
@@ -46,7 +47,7 @@ class WalletIntegrationTestResponse(BaseModel):
     message: str
     latency_ms: int
     status_code: int
-    api_usage: dict[str, str | int | float | bool | None] | None = None
+    api_usage: dict[str, Any] | None = None
 
 
 class WalletSyncTriggerRequest(BaseModel):

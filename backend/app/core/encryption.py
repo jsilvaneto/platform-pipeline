@@ -31,6 +31,8 @@ def mask_token(token: str) -> str:
     if not token:
         return ""
     clean = token.strip()
+    if clean.lower().startswith("bearer "):
+        clean = clean[7:].strip()
     if len(clean) <= 8:
         return "••••••••"
     prefix = clean[:4]

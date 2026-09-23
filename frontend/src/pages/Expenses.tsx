@@ -16,12 +16,7 @@ import {
 } from "../types";
 import { formatCurrency } from "../utils/format";
 
-interface ExpensesProps {
-  isCreateModalOpenExternal?: boolean;
-  onCloseCreateModalExternal?: () => void;
-}
-
-export const Expenses: React.FC<ExpensesProps> = () => {
+export const Expenses: React.FC = () => {
   const today = useMemo(() => new Date(), []);
   const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 

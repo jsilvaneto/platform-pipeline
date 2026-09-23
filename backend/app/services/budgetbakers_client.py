@@ -52,7 +52,10 @@ class BudgetBakersClient:
         min_request_interval_seconds: float = 0.25,
         timeout_seconds: float = 25.0,
     ) -> None:
-        self.token = token.strip()
+        clean_token = token.strip()
+        if clean_token.lower().startswith("bearer "):
+            clean_token = clean_token[7:].strip()
+        self.token = clean_token
         self.base_url = base_url.rstrip("/")
         self.min_request_interval = min_request_interval_seconds
         self.timeout = timeout_seconds
@@ -169,30 +172,30 @@ class BudgetBakersClient:
     # Recursos da API
     # -------------------------------------------------------------------------
 
-    async def get_usage_stats(self) -> dict[str, Any]:
+    async def get_usage_stats(self, period: str = "30days") -> dict[str, Any]:
         """Consulta as estatísticas de consumo e cota do token atual."""
-        return await self._request("GET", "/v1/api/api-usage/stats")
+        return await self._request("GET", "/v1/api/api-usage/stats", params={"period": period})
 
     async def get_accounts(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
         """Busca todas as contas bancárias, cartões e investimentos."""
         data = await self._request("GET", "/v1/api/accounts", params={"limit": limit, "offset": offset})
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("accounts", data.get("items", data.get("data", [])))
 
     async def get_categories(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
         """Busca todas as categorias e subcategorias com suas cardinalidades."""
         data = await self._request("GET", "/v1/api/categories", params={"limit": limit, "offset": offset})
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("categories", data.get("items", data.get("data", [])))
 
     async def get_labels(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
         """Busca todas as etiquetas (tags) registradas."""
         data = await self._request("GET", "/v1/api/labels", params={"limit": limit, "offset": offset})
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("labels", data.get("items", data.get("data", [])))
 
     async def get_records_page(
         self,
@@ -213,33 +216,33 @@ class BudgetBakersClient:
         data = await self._request("GET", "/v1/api/records", params=params)
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("records", data.get("items", data.get("data", [])))
 
-    async def get_budgets(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
-        """Busca orçamentos programados e limites."""
-        params = {"limit": limit, "offset": offset, "spending": "current+5"}
+    async def get_budgets(self, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
+        """Busca orçamentos programados e limites (máx 20 permitido pela BudgetBakers)."""
+        params = {"limit": min(limit, 20), "offset": offset, "spending": "current+5"}
         data = await self._request("GET", "/v1/api/budgets", params=params)
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("budgets", data.get("items", data.get("data", [])))
 
     async def get_standing_orders(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
         """Busca ordens permanentes e pagamentos planejados recorrentes (RRULE)."""
         data = await self._request("GET", "/v1/api/standing-orders", params={"limit": limit, "offset": offset})
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("standingOrders", data.get("standing_orders", data.get("items", data.get("data", []))))
 
     async def get_standing_order_items(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
         """Busca ocorrências individuais geradas para cada ordem permanente."""
         data = await self._request("GET", "/v1/api/standing-orders/items", params={"limit": limit, "offset": offset})
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("items", data.get("standingOrderItems", data.get("data", [])))
 
     async def get_goals(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
         """Busca metas financeiras e progresso."""
         data = await self._request("GET", "/v1/api/goals", params={"limit": limit, "offset": offset})
         if isinstance(data, list):
             return data
-        return data.get("items", data.get("data", []))
+        return data.get("goals", data.get("items", data.get("data", [])))
